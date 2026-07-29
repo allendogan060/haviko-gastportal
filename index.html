@@ -11,7 +11,7 @@
   <meta name="apple-itunes-app" content="app-id=6794772408, app-argument=https://gastportal.haviko.de/">
   <link rel="icon" type="image/png" sizes="48x48" href="https://login.haviko.de/assets/favicon-48.png">
   <link rel="apple-touch-icon" sizes="180x180" href="https://login.haviko.de/assets/apple-touch-icon.png">
-  <title>Gastportal | Haviko</title>
+  <title>Gastportal - Haviko</title>
   <style>
     :root {
       --forest: #075f4e;
@@ -34,12 +34,8 @@
     .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--forest-deep); font-size: 20px; font-weight: 800; text-decoration: none; }
     .brand img { width: 39px; height: 39px; border-radius: 11px; box-shadow: 0 8px 22px rgba(7,95,78,.2); }
     .link { color: var(--forest); text-decoration: none; font-weight: 700; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 24px; align-items: start; }
     .eyebrow { display: inline-flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 999px; background: #def1eb; color: var(--forest); font-size: 13px; font-weight: 800; }
-    h1 { margin: 18px 0 14px; color: var(--forest-deep); font-size: clamp(42px, 8vw, 72px); line-height: .98; letter-spacing: 0; }
-    .lead { margin: 0; max-width: 600px; color: var(--muted); font-size: 19px; line-height: 1.52; }
     .card { border: 1px solid rgba(7,95,78,.14); border-radius: 22px; background: var(--surface); box-shadow: 0 20px 58px rgba(6,60,50,.10); }
-    .access-card { margin-top: 30px; padding: 22px; }
     .access-card h2, .side-card h2 { margin: 0 0 8px; font-size: 21px; }
     .access-card p, .side-card p { margin: 0; color: var(--muted); line-height: 1.45; }
     .access-form { display: flex; gap: 10px; margin-top: 18px; }
@@ -53,6 +49,31 @@
     .icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #e2f2ee; color: var(--forest); font-size: 18px; font-weight: 900; }
     .feature strong { display: block; margin-bottom: 3px; }
     .feature span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+    /* Login-page-matching auth layout */
+    .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, 0.9fr) minmax(420px, 1.1fr); }
+    .auth-brand { min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: clamp(30px, 5vw, 68px); background: linear-gradient(rgba(8, 55, 45, 0.94), rgba(13, 74, 60, 0.94)), var(--forest); color: white; }
+    .brand-lockup { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 800; }
+    .brand-lockup img { width: 39px; height: 39px; border-radius: 11px; }
+    .auth-brand .eyebrow { background: transparent; padding: 0; color: #80d5bd; }
+    .auth-brand h1 { max-width: 620px; margin: 6px 0 14px; color: #fff; font-size: clamp(38px, 4vw, 54px); line-height: 1.05; letter-spacing: 0; }
+    .auth-brand p:not(.eyebrow) { max-width: 570px; color: rgba(255,255,255,.74); font-size: 16px; line-height: 1.55; }
+    .auth-points { display: grid; gap: 7px; }
+    .auth-points span { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; }
+    .auth-points span::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #80d5bd; content: ""; }
+    .auth-panel { width: min(100% - 40px, 500px); min-width: 0; margin: auto; padding: 34px; }
+    .auth-heading h2 { margin: 0; font-size: 32px; }
+    .auth-heading > p:last-child { margin: 8px 0 24px; color: var(--muted); }
+    .field { display: grid; gap: 7px; margin-bottom: 16px; }
+    .field > span { color: var(--ink); font-size: 13px; font-weight: 750; }
+    .primary.full, .secondary.full { width: 100%; }
+    .secondary { min-height: 50px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; color: var(--forest); background: #fff; font-weight: 800; }
+    .divider { display: flex; align-items: center; gap: 10px; margin: 22px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .field-hint { margin: -5px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .form-error { display: none; margin: 0 0 16px; padding: 10px 12px; border: 1px solid #efbdc4; border-radius: 6px; background: #fdecee; color: #9b2f3d; font-size: 13px; }
+    .form-error.visible { display: block; }
+    @media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-brand { min-height: 0; padding: 24px 20px 30px; } .auth-panel { width: 100%; margin: 0; padding: 24px 20px; } }
     .receipt { display: none; max-width: 640px; margin: 0 auto; }
     .receipt.visible { display: block; }
     .receipt header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px; border-bottom: 1px solid var(--line); }
@@ -67,56 +88,50 @@
     .message.visible { display: block; }
     .footer { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 34px; color: var(--muted); font-size: 13px; }
     .footer a { color: var(--forest); }
-    @media (max-width: 700px) { .hero { grid-template-columns: 1fr; } .topbar { margin-bottom: 34px; } .access-form { display: grid; } .primary { width: 100%; } }
   </style>
 </head>
 <body>
-  <main class="shell">
-    <header class="topbar">
-      <a class="brand" href="https://haviko.de/">
-        <img src="https://login.haviko.de/assets/haviko-app-icon.png" alt="">
-        <span>Haviko</span>
-      </a>
-      <a class="link" href="https://reservierung.haviko.de/">Reservieren</a>
-    </header>
-
-    <section id="landing" class="hero">
-      <article>
-        <span class="eyebrow">Persönlich & geschützt</span>
-        <h1>Dein Besuch.<br>Alles an einem Ort.</h1>
-        <p class="lead">Reservierungen, digitale Rechnungen, Besuche, Feedback und Stempelkarten bleiben bei dir – immer nur für das Restaurant, dem du sie freigibst.</p>
-        <section class="card access-card">
-          <h2>Persönlichen Link öffnen</h2>
-          <p>Füge den sicheren Link aus deiner E-Mail ein oder scanne den QR-Code auf deiner Rechnung.</p>
-          <form class="access-form" id="token-form">
-            <input id="token-input" type="text" autocomplete="off" placeholder="Link oder Rechnungs-Code einfügen" aria-label="Persönlichen Link oder Rechnungs-Code einfügen">
-            <button class="primary" type="submit">Öffnen</button>
-          </form>
-          <p class="hint">Aus Datenschutzgründen gibt es keine öffentliche Restaurant- oder Gäste-Suche. Dein persönlicher Link ist dein Zugang.</p>
-          <div id="message" class="message" role="status"></div>
-        </section>
-        <section class="card access-card">
-          <h2>Mit E-Mail anmelden</h2>
-          <p>Erhalte einen persönlichen, sicheren Anmeldelink. Danach siehst du nur Restaurants und Besuche, die zu deiner bestätigten E-Mail-Adresse gehören.</p>
-          <form class="access-form" id="email-form">
-            <input id="email-input" type="email" autocomplete="email" placeholder="E-Mail-Adresse" aria-label="E-Mail-Adresse">
-            <button class="primary" type="submit">Link senden</button>
-          </form>
-          <p class="hint">Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
-          <div id="email-message" class="message" role="status"></div>
-        </section>
-      </article>
-
-      <aside class="card side-card">
-        <h2>Was du hier sehen kannst</h2>
-        <p>Welche Bereiche verfügbar sind, entscheidet dein Restaurant.</p>
-        <div class="feature"><span class="icon">€</span><div><strong>Digitale Rechnung</strong><span>Beleg öffnen, speichern oder den Trinkgeld-Link nutzen.</span></div></div>
-        <div class="feature"><span class="icon">✓</span><div><strong>Reservierungen</strong><span>Deinen Termin ansehen, verwalten oder stornieren.</span></div></div>
-        <div class="feature"><span class="icon">★</span><div><strong>Feedback</strong><span>Deinen Besuch einfach bewerten.</span></div></div>
-        <div class="feature"><span class="icon">#</span><div><strong>Stempelkarte</strong><span>Deinen Fortschritt und mögliche Vorteile im Blick behalten.</span></div></div>
-      </aside>
+  <div id="landing" class="auth-shell">
+    <section class="auth-brand">
+      <div class="brand-lockup"><img src="https://login.haviko.de/assets/haviko-app-icon.png" alt=""><span>Haviko</span></div>
+      <div>
+        <p class="eyebrow">Persönlich &amp; geschützt</p>
+        <h1>Dein Besuch. Alles an einem Ort.</h1>
+        <p>Reservierungen, digitale Rechnungen, Besuche, Feedback und Stempelkarten bleiben bei dir – immer nur für das Restaurant, dem du sie freigibst.</p>
+      </div>
+      <div class="auth-points" aria-label="Funktionen">
+        <span>Digitale Rechnung &amp; Trinkgeld-Link</span>
+        <span>Reservierungen ansehen und verwalten</span>
+        <span>Stempelkarte und Feedback</span>
+      </div>
     </section>
 
+    <section class="auth-panel">
+      <div class="auth-heading">
+        <p class="eyebrow">Haviko Gastportal</p>
+        <h2>Anmelden</h2>
+        <p>Mit deiner E-Mail-Adresse, ganz ohne Passwort.</p>
+      </div>
+
+      <form id="email-form">
+        <label class="field">
+          <span>E-Mail-Adresse</span>
+          <input id="email-input" type="email" autocomplete="email" placeholder="du@beispiel.de" required>
+        </label>
+        <p class="field-hint">Du erhältst einen sicheren Anmeldelink. Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
+        <p class="form-error" id="email-message" role="alert"></p>
+        <button class="primary full" type="submit">Anmeldelink senden</button>
+      </form>
+
+      <form id="token-form" class="hidden" style="display:none">
+        <input id="token-input" type="text" autocomplete="off">
+        <p class="form-error" id="message" role="alert"></p>
+        <button type="submit">Öffnen</button>
+      </form>
+    </section>
+  </div>
+
+  <main class="shell">
     <section id="receipt" class="receipt card" aria-live="polite"></section>
     <section id="guest-overview" class="receipt card" aria-live="polite"></section>
 
