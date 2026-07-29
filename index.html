@@ -73,6 +73,7 @@
     .field-hint { margin: -5px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .form-error { display: none; margin: 0 0 16px; padding: 10px 12px; border: 1px solid #efbdc4; border-radius: 6px; background: #fdecee; color: #9b2f3d; font-size: 13px; }
     .form-error.visible { display: block; }
+    .form-error.success { border-color: #a9dcc7; background: #e6f6ee; color: #0a6b45; }
     @media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-brand { min-height: 0; padding: 24px 20px 30px; } .auth-panel { width: 100%; margin: 0; padding: 24px 20px; } }
     .receipt { display: none; max-width: 640px; margin: 0 auto; }
     .receipt.visible { display: block; }
@@ -128,6 +129,12 @@
         <p class="form-error" id="message" role="alert"></p>
         <button type="submit">Öffnen</button>
       </form>
+
+      <div id="confirm-panel" class="hidden">
+        <p class="field-hint">Tippe auf den Button, um deine Anmeldung abzuschließen.</p>
+        <p class="form-error" id="confirm-message" role="alert"></p>
+        <button class="primary full" id="confirm-button" type="button">Anmeldung bestätigen</button>
+      </div>
     </section>
   </div>
 
@@ -170,9 +177,10 @@
       message.classList.add("visible");
     }
 
-    function showEmailMessage(text) {
+    function showEmailMessage(text, isSuccess) {
       emailMessage.textContent = text;
       emailMessage.classList.add("visible");
+      emailMessage.classList.toggle("success", Boolean(isSuccess));
     }
 
     function escapeHTML(value) {
@@ -256,11 +264,46 @@
           body: JSON.stringify({ email, create_user: true, options: { emailRedirectTo: "https://gastportal.haviko.de/" } })
         });
         if (!response.ok) throw new Error("Der Anmeldelink konnte gerade nicht gesendet werden.");
-        showEmailMessage("Wenn diese Adresse für einen persönlichen Gastzugang genutzt werden kann, wurde ein sicherer Anmeldelink gesendet.");
+        showEmailMessage("Wenn diese Adresse für einen persönlichen Gastzugang genutzt werden kann, wurde ein sicherer Anmeldelink gesendet.", true);
       } catch (error) {
-        showEmailMessage(error.message || "Der Anmeldelink konnte nicht gesendet werden.");
+        showEmailMessage(error.message || "Der Anmeldelink konnte nicht gesendet werden.", false);
       }
     });
+
+    const confirmPanel = document.getElementById("confirm-panel");
+    const confirmButton = document.getElementById("confirm-button");
+    const confirmMessage = document.getElementById("confirm-message");
+    const tokenHash = new URLSearchParams(location.search).get("token_hash");
+    const otpType = new URLSearchParams(location.search).get("type");
+
+    if (tokenHash && otpType) {
+      document.getElementById("email-form").classList.add("hidden");
+      document.getElementById("email-form").style.display = "none";
+      confirmPanel.classList.remove("hidden");
+      confirmButton.addEventListener("click", async () => {
+        confirmButton.disabled = true;
+        confirmButton.textContent = "Wird bestätigt …";
+        try {
+          const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+            method: "POST",
+            headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+            body: JSON.stringify({ type: otpType, token_hash: tokenHash })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.access_token) {
+            throw new Error("Der Anmeldelink ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen an.");
+          }
+          history.replaceState({}, "", location.pathname);
+          confirmPanel.classList.add("hidden");
+          loadGuestOverview(result.access_token);
+        } catch (error) {
+          confirmMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
+          confirmMessage.classList.add("visible");
+          confirmButton.disabled = false;
+          confirmButton.textContent = "Anmeldung bestätigen";
+        }
+      });
+    }
 
     const receiptToken = new URLSearchParams(location.search).get("receipt");
     const accessToken = new URLSearchParams(location.hash.slice(1)).get("access_token");
