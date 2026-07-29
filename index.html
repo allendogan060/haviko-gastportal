@@ -52,6 +52,7 @@
 
     /* Login-page-matching auth layout */
     .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, 0.9fr) minmax(420px, 1.1fr); }
+    .auth-shell[hidden] { display: none; }
     .auth-brand { min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: clamp(30px, 5vw, 68px); background: linear-gradient(rgba(8, 55, 45, 0.94), rgba(13, 74, 60, 0.94)), var(--forest); color: white; }
     .brand-lockup { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 800; }
     .brand-lockup img { width: 39px; height: 39px; border-radius: 11px; }
@@ -81,7 +82,10 @@
     .receipt h1 { margin: 0; font-size: 30px; }
     .receipt-meta { padding: 20px 24px; color: var(--muted); display: grid; gap: 7px; font-size: 14px; }
     .receipt-items { margin: 0; padding: 0 24px 20px; list-style: none; }
-    .receipt-items li { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .receipt-items li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .restaurant-row { cursor: pointer; }
+    .restaurant-row:hover { background: var(--soft, #f2f6f4); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 10px; }
+    .restaurant-row .chevron { color: var(--muted); font-size: 22px; }
     .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
     .receipt-actions { padding: 0 24px 24px; }
     .receipt-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
@@ -219,6 +223,18 @@
       }
     }
 
+    let guestOverviewData = null;
+
+    const statusLabels = {
+      pending: "Angefragt",
+      expected: "Bestätigt",
+      seated: "Vor Ort",
+      completed: "Abgeschlossen",
+      cancelled: "Storniert",
+      no_show: "Nicht erschienen",
+      waitlisted: "Warteliste"
+    };
+
     async function loadGuestOverview(accessToken) {
       landing.hidden = true;
       overviewElement.classList.add("visible");
@@ -230,19 +246,58 @@
           body: "{}"
         });
         if (!response.ok) throw new Error("Dein Gastprofil ist noch nicht bereit. Bitte öffne den Link noch einmal, nachdem das Restaurant deine Reservierung gespeichert hat.");
-        const overview = await response.json();
-        const restaurants = Array.isArray(overview.restaurants) ? overview.restaurants : [];
-        const reservations = Array.isArray(overview.reservations) ? overview.reservations : [];
-        const restaurantRows = restaurants.map(restaurant => `<li><span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong><br><small>${Number(restaurant.completedVisits || 0)} Besuche</small></span><a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Reservieren</a></li>`).join("") || '<li><span>Noch keine Restaurants gefunden.</span></li>';
-        const reservationRows = reservations.map(reservation => `<li><span><strong>${escapeHTML(reservation.restaurantName || "Restaurant")}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")}</small></span><strong>${escapeHTML(reservation.status || "")}</strong></li>`).join("") || '<li><span>Noch keine Reservierungen gefunden.</span></li>';
-        overviewElement.innerHTML = `
-          <header><div><p class="eyebrow">Gastportal</p><h1>Deine Restaurants</h1></div><a class="link" href="https://gastportal.haviko.de/">Abmelden</a></header>
-          <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
-          <div class="receipt-meta"><strong>Restaurants</strong></div><ul class="receipt-items">${restaurantRows}</ul>
-          <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div><ul class="receipt-items">${reservationRows}</ul>`;
+        guestOverviewData = await response.json();
+        renderRestaurantList();
       } catch (error) {
         overviewElement.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Profil nicht verfügbar</h1></div><a class="link" href="https://gastportal.haviko.de/">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Gastzugang konnte nicht geöffnet werden.")}</div>`;
       }
+    }
+
+    function renderRestaurantList() {
+      const overview = guestOverviewData || { email: "", restaurants: [] };
+      const restaurants = Array.isArray(overview.restaurants) ? overview.restaurants : [];
+      const rows = restaurants.map(restaurant => `
+        <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
+          <span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong><br><small>${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</small></span>
+          <span class="chevron" aria-hidden="true">›</span>
+        </li>`).join("") || '<li><span>Noch keine besuchten Restaurants gefunden.</span></li>';
+
+      overviewElement.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>Besuchte Restaurants</h1></div><a class="link" href="https://gastportal.haviko.de/">Abmelden</a></header>
+        <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+        <ul class="receipt-items restaurant-list">${rows}</ul>`;
+
+      overviewElement.querySelectorAll(".restaurant-row[data-restaurant-id]").forEach(row => {
+        const id = row.getAttribute("data-restaurant-id");
+        if (!id) return;
+        row.addEventListener("click", () => renderRestaurantDetail(id));
+      });
+    }
+
+    function renderRestaurantDetail(restaurantID) {
+      const overview = guestOverviewData || { restaurants: [], reservations: [] };
+      const restaurant = (overview.restaurants || []).find(item => item.restaurantID === restaurantID);
+      if (!restaurant) return renderRestaurantList();
+      const reservations = (overview.reservations || []).filter(item => item.restaurantID === restaurantID);
+      const rows = reservations.map(reservation => `
+        <li>
+          <span><strong>${escapeHTML(reservation.confirmationCode || "")}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")} · ${Number(reservation.guests || 0)} Gäste</small></span>
+          <strong>${escapeHTML(statusLabels[reservation.status] || reservation.status || "")}</strong>
+        </li>`).join("") || '<li><span>Noch keine Reservierungen bei diesem Restaurant.</span></li>';
+
+      overviewElement.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div><a class="link" href="#" id="back-to-restaurants">Zurück</a></header>
+        <div class="receipt-meta">${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</div>
+        <div class="confirmation-actions" style="margin:16px 0 22px">
+          <a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Neu reservieren</a>
+        </div>
+        <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div>
+        <ul class="receipt-items">${rows}</ul>`;
+
+      document.getElementById("back-to-restaurants").addEventListener("click", event => {
+        event.preventDefault();
+        renderRestaurantList();
+      });
     }
 
     document.getElementById("token-form").addEventListener("submit", event => {
