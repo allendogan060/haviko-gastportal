@@ -130,7 +130,7 @@
         <button type="submit">Öffnen</button>
       </form>
 
-      <div id="confirm-panel" class="hidden">
+      <div id="confirm-panel" hidden>
         <p class="field-hint">Tippe auf den Button, um deine Anmeldung abzuschließen.</p>
         <p class="form-error" id="confirm-message" role="alert"></p>
         <button class="primary full" id="confirm-button" type="button">Anmeldung bestätigen</button>
@@ -277,9 +277,8 @@
     const otpType = new URLSearchParams(location.search).get("type");
 
     if (tokenHash && otpType) {
-      document.getElementById("email-form").classList.add("hidden");
-      document.getElementById("email-form").style.display = "none";
-      confirmPanel.classList.remove("hidden");
+      document.getElementById("email-form").hidden = true;
+      confirmPanel.hidden = false;
       confirmButton.addEventListener("click", async () => {
         confirmButton.disabled = true;
         confirmButton.textContent = "Wird bestätigt …";
@@ -294,7 +293,7 @@
             throw new Error("Der Anmeldelink ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen an.");
           }
           history.replaceState({}, "", location.pathname);
-          confirmPanel.classList.add("hidden");
+          confirmPanel.hidden = true;
           loadGuestOverview(result.access_token);
         } catch (error) {
           confirmMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
