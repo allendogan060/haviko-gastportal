@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#075f4e">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="description" content="Dein persönlicher Bereich für Reservierungen, Rechnungen und Besuche bei Haviko-Restaurants.">
+  <meta name="application-name" content="Haviko Gastportal">
+  <meta name="apple-mobile-web-app-title" content="Haviko Gastportal">
+  <meta name="apple-itunes-app" content="app-id=6794772408, app-argument=https://gastportal.haviko.de/">
+  <link rel="icon" type="image/png" sizes="48x48" href="https://login.haviko.de/assets/favicon-48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://login.haviko.de/assets/apple-touch-icon.png">
+  <title>Gastportal | Haviko</title>
+  <style>
+    :root {
+      --forest: #075f4e;
+      --forest-deep: #063c32;
+      --action: #087966;
+      --orange: #ff6a4f;
+      --ink: #14211d;
+      --muted: #687671;
+      --line: #d9e4e0;
+      --surface: #ffffff;
+      --soft: #f2f6f4;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; min-height: 100dvh; color: var(--ink); background: #f4f8f6; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(100%, 900px); margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom)); }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; margin-bottom: clamp(32px, 8vw, 70px); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--forest-deep); font-size: 20px; font-weight: 800; text-decoration: none; }
+    .brand img { width: 39px; height: 39px; border-radius: 11px; box-shadow: 0 8px 22px rgba(7,95,78,.2); }
+    .link { color: var(--forest); text-decoration: none; font-weight: 700; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 24px; align-items: start; }
+    .eyebrow { display: inline-flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 999px; background: #def1eb; color: var(--forest); font-size: 13px; font-weight: 800; }
+    h1 { margin: 18px 0 14px; color: var(--forest-deep); font-size: clamp(42px, 8vw, 72px); line-height: .98; letter-spacing: 0; }
+    .lead { margin: 0; max-width: 600px; color: var(--muted); font-size: 19px; line-height: 1.52; }
+    .card { border: 1px solid rgba(7,95,78,.14); border-radius: 22px; background: var(--surface); box-shadow: 0 20px 58px rgba(6,60,50,.10); }
+    .access-card { margin-top: 30px; padding: 22px; }
+    .access-card h2, .side-card h2 { margin: 0 0 8px; font-size: 21px; }
+    .access-card p, .side-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .access-form { display: flex; gap: 10px; margin-top: 18px; }
+    input { flex: 1; min-width: 0; min-height: 50px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+    input:focus { outline: 3px solid rgba(8,121,102,.18); border-color: var(--action); }
+    .primary { min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; }
+    .hint { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .side-card { padding: 22px; }
+    .feature { display: grid; grid-template-columns: 42px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .feature:last-child { border-bottom: 0; }
+    .icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #e2f2ee; color: var(--forest); font-size: 18px; font-weight: 900; }
+    .feature strong { display: block; margin-bottom: 3px; }
+    .feature span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+    .receipt { display: none; max-width: 640px; margin: 0 auto; }
+    .receipt.visible { display: block; }
+    .receipt header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 24px; border-bottom: 1px solid var(--line); }
+    .receipt h1 { margin: 0; font-size: 30px; }
+    .receipt-meta { padding: 20px 24px; color: var(--muted); display: grid; gap: 7px; font-size: 14px; }
+    .receipt-items { margin: 0; padding: 0 24px 20px; list-style: none; }
+    .receipt-items li { display: flex; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
+    .receipt-actions { padding: 0 24px 24px; }
+    .receipt-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
+    .message { display: none; margin-top: 18px; padding: 14px; border-radius: 14px; background: #fff0e9; color: #8b3b23; line-height: 1.45; }
+    .message.visible { display: block; }
+    .footer { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 34px; color: var(--muted); font-size: 13px; }
+    .footer a { color: var(--forest); }
+    @media (max-width: 700px) { .hero { grid-template-columns: 1fr; } .topbar { margin-bottom: 34px; } .access-form { display: grid; } .primary { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="https://haviko.de/">
+        <img src="https://login.haviko.de/assets/haviko-app-icon.png" alt="">
+        <span>Haviko</span>
+      </a>
+      <a class="link" href="https://reservierung.haviko.de/">Reservieren</a>
+    </header>
+
+    <section id="landing" class="hero">
+      <article>
+        <span class="eyebrow">Persönlich & geschützt</span>
+        <h1>Dein Besuch.<br>Alles an einem Ort.</h1>
+        <p class="lead">Reservierungen, digitale Rechnungen, Besuche, Feedback und Stempelkarten bleiben bei dir – immer nur für das Restaurant, dem du sie freigibst.</p>
+        <section class="card access-card">
+          <h2>Persönlichen Link öffnen</h2>
+          <p>Füge den sicheren Link aus deiner E-Mail ein oder scanne den QR-Code auf deiner Rechnung.</p>
+          <form class="access-form" id="token-form">
+            <input id="token-input" type="text" autocomplete="off" placeholder="Link oder Rechnungs-Code einfügen" aria-label="Persönlichen Link oder Rechnungs-Code einfügen">
+            <button class="primary" type="submit">Öffnen</button>
+          </form>
+          <p class="hint">Aus Datenschutzgründen gibt es keine öffentliche Restaurant- oder Gäste-Suche. Dein persönlicher Link ist dein Zugang.</p>
+          <div id="message" class="message" role="status"></div>
+        </section>
+        <section class="card access-card">
+          <h2>Mit E-Mail anmelden</h2>
+          <p>Erhalte einen persönlichen, sicheren Anmeldelink. Danach siehst du nur Restaurants und Besuche, die zu deiner bestätigten E-Mail-Adresse gehören.</p>
+          <form class="access-form" id="email-form">
+            <input id="email-input" type="email" autocomplete="email" placeholder="E-Mail-Adresse" aria-label="E-Mail-Adresse">
+            <button class="primary" type="submit">Link senden</button>
+          </form>
+          <p class="hint">Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
+          <div id="email-message" class="message" role="status"></div>
+        </section>
+      </article>
+
+      <aside class="card side-card">
+        <h2>Was du hier sehen kannst</h2>
+        <p>Welche Bereiche verfügbar sind, entscheidet dein Restaurant.</p>
+        <div class="feature"><span class="icon">€</span><div><strong>Digitale Rechnung</strong><span>Beleg öffnen, speichern oder den Trinkgeld-Link nutzen.</span></div></div>
+        <div class="feature"><span class="icon">✓</span><div><strong>Reservierungen</strong><span>Deinen Termin ansehen, verwalten oder stornieren.</span></div></div>
+        <div class="feature"><span class="icon">★</span><div><strong>Feedback</strong><span>Deinen Besuch einfach bewerten.</span></div></div>
+        <div class="feature"><span class="icon">#</span><div><strong>Stempelkarte</strong><span>Deinen Fortschritt und mögliche Vorteile im Blick behalten.</span></div></div>
+      </aside>
+    </section>
+
+    <section id="receipt" class="receipt card" aria-live="polite"></section>
+    <section id="guest-overview" class="receipt card" aria-live="polite"></section>
+
+    <footer class="footer">
+      <span>Haviko Gastportal</span>
+      <a href="https://haviko.de/#datenschutz">Datenschutz</a>
+      <a href="https://haviko.de/#support">Hilfe</a>
+    </footer>
+  </main>
+  <script>
+    const SUPABASE_URL = "https://dlapwemckfhxklytbqkk.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_VeeQLARNn-sULZ4snvp3HA_Hd78H5RN";
+    const landing = document.getElementById("landing");
+    const receiptElement = document.getElementById("receipt");
+    const overviewElement = document.getElementById("guest-overview");
+    const message = document.getElementById("message");
+    const emailMessage = document.getElementById("email-message");
+    const tokenInput = document.getElementById("token-input");
+
+    const money = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+    const dateTime = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+
+    function tokenFrom(value) {
+      const trimmed = value.trim();
+      if (!trimmed) return "";
+      try {
+        const url = new URL(trimmed);
+        return url.searchParams.get("receipt") || "";
+      } catch (_) {
+        return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(trimmed) ? trimmed : "";
+      }
+    }
+
+    function showMessage(text) {
+      message.textContent = text;
+      message.classList.add("visible");
+    }
+
+    function showEmailMessage(text) {
+      emailMessage.textContent = text;
+      emailMessage.classList.add("visible");
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? "").replace(/[&<>'\"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" }[char]));
+    }
+
+    async function loadReceipt(token) {
+      landing.hidden = true;
+      receiptElement.classList.add("visible");
+      receiptElement.innerHTML = '<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Wird geladen…</h1></div></header>';
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_public_receipt`, {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_token: token })
+        });
+        if (!response.ok) throw new Error("Die Rechnung konnte nicht geladen werden.");
+        const receipt = await response.json();
+        if (!receipt || !receipt.invoiceNumber) throw new Error("Dieser persönliche Rechnungslink ist nicht mehr verfügbar.");
+        const items = Array.isArray(receipt.items) ? receipt.items : [];
+        const rows = items.map(item => {
+          const quantity = Number(item.quantity ?? item.count ?? 1);
+          const title = escapeHTML(item.name ?? item.productName ?? "Position");
+          const amount = Number(item.grossAmount ?? item.price ?? item.total ?? 0);
+          return `<li><span>${quantity}× ${title}</span><strong>${money.format(amount)}</strong></li>`;
+        }).join("") || '<li><span>Keine Positionen hinterlegt</span></li>';
+        const tip = /^https:\/\//i.test(receipt.tipLinkURL || "")
+          ? `<div class="receipt-actions"><a href="${escapeHTML(receipt.tipLinkURL)}" target="_blank" rel="noopener">Trinkgeld geben</a></div>` : "";
+        receiptElement.innerHTML = `
+          <header><div><p class="eyebrow">Digitale Rechnung</p><h1>${escapeHTML(receipt.restaurantName || "Haviko Restaurant")}</h1></div><a class="link" href="https://gastportal.haviko.de/">Schließen</a></header>
+          <div class="receipt-meta"><span>Rechnung ${escapeHTML(receipt.invoiceNumber)}</span><span>${escapeHTML(receipt.sourceName || "Direktverkauf")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</span><span>${escapeHTML(receipt.paymentMethodName || "Zahlung")}</span></div>
+          <ul class="receipt-items">${rows}</ul>
+          <div class="receipt-total"><span>Gesamt</span><span>${money.format(Number(receipt.grossAmount || 0))}</span></div>${tip}`;
+      } catch (error) {
+        receiptElement.innerHTML = `<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Nicht verfügbar</h1></div><a class="link" href="https://gastportal.haviko.de/">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Link konnte nicht geöffnet werden.")}</div>`;
+      }
+    }
+
+    async function loadGuestOverview(accessToken) {
+      landing.hidden = true;
+      overviewElement.classList.add("visible");
+      overviewElement.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Dein Profil wird geladen…</h1></div></header>';
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: "{}"
+        });
+        if (!response.ok) throw new Error("Dein Gastprofil ist noch nicht bereit. Bitte öffne den Link noch einmal, nachdem das Restaurant deine Reservierung gespeichert hat.");
+        const overview = await response.json();
+        const restaurants = Array.isArray(overview.restaurants) ? overview.restaurants : [];
+        const reservations = Array.isArray(overview.reservations) ? overview.reservations : [];
+        const restaurantRows = restaurants.map(restaurant => `<li><span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong><br><small>${Number(restaurant.completedVisits || 0)} Besuche</small></span><a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Reservieren</a></li>`).join("") || '<li><span>Noch keine Restaurants gefunden.</span></li>';
+        const reservationRows = reservations.map(reservation => `<li><span><strong>${escapeHTML(reservation.restaurantName || "Restaurant")}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")}</small></span><strong>${escapeHTML(reservation.status || "")}</strong></li>`).join("") || '<li><span>Noch keine Reservierungen gefunden.</span></li>';
+        overviewElement.innerHTML = `
+          <header><div><p class="eyebrow">Gastportal</p><h1>Deine Restaurants</h1></div><a class="link" href="https://gastportal.haviko.de/">Abmelden</a></header>
+          <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+          <div class="receipt-meta"><strong>Restaurants</strong></div><ul class="receipt-items">${restaurantRows}</ul>
+          <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div><ul class="receipt-items">${reservationRows}</ul>`;
+      } catch (error) {
+        overviewElement.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Profil nicht verfügbar</h1></div><a class="link" href="https://gastportal.haviko.de/">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Gastzugang konnte nicht geöffnet werden.")}</div>`;
+      }
+    }
+
+    document.getElementById("token-form").addEventListener("submit", event => {
+      event.preventDefault();
+      const token = tokenFrom(tokenInput.value);
+      if (!token) return showMessage("Bitte füge den vollständigen persönlichen Link oder einen gültigen Rechnungs-Code ein.");
+      history.replaceState({}, "", `?receipt=${encodeURIComponent(token)}`);
+      loadReceipt(token);
+    });
+
+    document.getElementById("email-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const email = document.getElementById("email-input").value.trim().toLowerCase();
+      if (!/^\S+@\S+\.\S+$/.test(email)) return showEmailMessage("Bitte gib eine gültige E-Mail-Adresse ein.");
+      try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+          method: "POST",
+          headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ email, create_user: true, options: { emailRedirectTo: "https://gastportal.haviko.de/" } })
+        });
+        if (!response.ok) throw new Error("Der Anmeldelink konnte gerade nicht gesendet werden.");
+        showEmailMessage("Wenn diese Adresse für einen persönlichen Gastzugang genutzt werden kann, wurde ein sicherer Anmeldelink gesendet.");
+      } catch (error) {
+        showEmailMessage(error.message || "Der Anmeldelink konnte nicht gesendet werden.");
+      }
+    });
+
+    const receiptToken = new URLSearchParams(location.search).get("receipt");
+    const accessToken = new URLSearchParams(location.hash.slice(1)).get("access_token");
+    if (accessToken) {
+      history.replaceState({}, "", location.pathname + location.search);
+      loadGuestOverview(accessToken);
+    } else if (receiptToken) {
+      loadReceipt(receiptToken);
+    }
+  </script>
+</body>
+</html>
