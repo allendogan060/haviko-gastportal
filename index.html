@@ -587,6 +587,21 @@
         ? `<a class="secondary" href="${repeatURL.toString()}">Wie letztes Mal reservieren</a>`
         : "";
 
+      const profile = (guestOverviewData && guestOverviewData.profile) || {};
+      const fullName = (profile.displayName || guestOverviewData.name || "").trim();
+      const nameParts = fullName.split(" ");
+      const newBookingURL = new URL("https://reservierung.haviko.de/");
+      newBookingURL.searchParams.set("r", restaurant.publicID || "");
+      newBookingURL.searchParams.set("guestLocked", "1");
+      newBookingURL.searchParams.set("firstName", nameParts[0] || "");
+      newBookingURL.searchParams.set("lastName", nameParts.slice(1).join(" "));
+      newBookingURL.searchParams.set("email", guestOverviewData.email || "");
+      newBookingURL.searchParams.set("phone", profile.phone || "");
+      newBookingURL.searchParams.set("street", profile.street || "");
+      newBookingURL.searchParams.set("houseNumber", profile.houseNumber || "");
+      newBookingURL.searchParams.set("postalCode", profile.postalCode || "");
+      newBookingURL.searchParams.set("city", profile.city || "");
+
       const restaurantProfileBlock = restaurant.allowsProfileEditing ? `
         <div class="receipt-meta"><strong>Deine Daten bei ${escapeHTML(restaurant.name || "diesem Restaurant")}</strong></div>
         <form id="restaurant-profile-form" data-restaurant-id="${escapeHTML(restaurantID)}" style="padding:0 24px 20px; display:grid; gap:12px;">
@@ -608,7 +623,7 @@
         <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div><a class="link" href="#" id="back-to-restaurants">Zurück</a></header>
         <div class="receipt-meta">${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</div>
         <div class="confirmation-actions" style="margin:16px 24px 22px; display:flex; gap:12px; flex-wrap:wrap;">
-          <a class="primary" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Neu reservieren</a>
+          <a class="primary" href="${newBookingURL.toString()}">Neu reservieren</a>
           ${repeatButton}
         </div>
         <div class="section-divider"></div>
