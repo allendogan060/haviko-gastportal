@@ -92,6 +92,30 @@
     .loyalty-earned { margin-top: 8px; color: var(--forest); font-size: 13px; font-weight: 700; }
     .loyalty-ready { margin-top: 8px; color: var(--action); font-size: 13px; font-weight: 700; }
     .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
+    .table-info-grid { padding: 0 24px 20px; display: grid; gap: 14px; }
+    .table-info-grid > div strong { display: block; margin-bottom: 3px; font-size: 13px; color: var(--muted); }
+    .table-info-grid a { color: var(--action); }
+    .menu-list { padding: 0 24px 24px; display: grid; gap: 22px; }
+    .menu-category-title {
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--action, #087966);
+      color: var(--forest-deep, #063c32);
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .menu-items { display: grid; gap: 10px; }
+    .menu-item { display: flex; align-items: baseline; gap: 8px; }
+    .menu-item-name { color: var(--ink, #14211d); font-size: 15px; font-weight: 600; }
+    .menu-item-dots {
+      flex: 1;
+      border-bottom: 1px dotted var(--line, #d9e4e0);
+      transform: translateY(-4px);
+      min-width: 12px;
+    }
+    .menu-item-price { color: var(--forest-deep, #063c32); font-size: 15px; font-weight: 700; white-space: nowrap; }
     .receipt-actions { padding: 0 24px 24px; }
     .receipt-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
     .message { display: none; margin-top: 18px; padding: 14px; border-radius: 14px; background: #fff0e9; color: #8b3b23; line-height: 1.45; }
@@ -150,6 +174,7 @@
   <main class="shell">
     <section id="receipt" class="receipt card" aria-live="polite"></section>
     <section id="guest-overview" class="receipt card" aria-live="polite"></section>
+    <section id="table-view" class="receipt card" aria-live="polite"></section>
 
     <footer class="footer">
       <span>Haviko Gastportal</span>
@@ -483,12 +508,85 @@
       });
     }
 
+    function buildRestaurantInfoParts(restaurant) {
+      const info = [];
+      if (restaurant.address) {
+        info.push(`<div><strong>Adresse</strong>${escapeHTML(restaurant.address)}</div>`);
+      }
+      if (restaurant.openingHoursText) {
+        info.push(`<div><strong>Öffnungszeiten</strong>${escapeHTML(restaurant.openingHoursText)}</div>`);
+      }
+      if (restaurant.phone) {
+        info.push(`<div><strong>Telefon</strong><a href="tel:${encodeURIComponent(restaurant.phone)}">${escapeHTML(restaurant.phone)}</a></div>`);
+      }
+      if (restaurant.email) {
+        info.push(`<div><strong>E-Mail</strong><a href="mailto:${encodeURIComponent(restaurant.email)}">${escapeHTML(restaurant.email)}</a></div>`);
+      }
+      return info;
+    }
+
+    function renderTableMenuHTML(menu) {
+      const byCategory = new Map();
+      menu.forEach(item => {
+        const list = byCategory.get(item.category) || [];
+        list.push(item);
+        byCategory.set(item.category, list);
+      });
+      const formatPrice = value => money.format(Number(value || 0));
+      return [...byCategory.entries()].map(([category, items]) => `
+        <div class="menu-category">
+          <h3 class="menu-category-title">${escapeHTML(category || "Speisen")}</h3>
+          <div class="menu-items">
+            ${items.map(item => `
+              <div class="menu-item">
+                <span class="menu-item-name">${escapeHTML(item.name)}</span>
+                <span class="menu-item-dots"></span>
+                <span class="menu-item-price">${formatPrice(item.price)}</span>
+              </div>`).join("")}
+          </div>
+        </div>`).join("");
+    }
+
+    async function loadTableView(publicIDValue, tableIDValue) {
+      const tableViewElement = document.getElementById("table-view");
+      landing.hidden = true;
+      tableViewElement.classList.add("visible");
+      tableViewElement.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Wird geladen…</h1></div></header>';
+      try {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_public_booking_snapshot`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ p_public_id: publicIDValue })
+        });
+        if (!response.ok) throw new Error("Dieser Tisch-Link ist nicht mehr gültig.");
+        const snapshot = await response.json();
+        const table = (snapshot?.tables || []).find(item => item.id === tableIDValue);
+        const restaurant = snapshot?.restaurant || {};
+        const settings = restaurant.settings || {};
+        const showInfo = settings.tableQRShowsRestaurantInfo !== false;
+        const showMenu = settings.tableQRShowsMenu !== false;
+        const infoParts = showInfo ? buildRestaurantInfoParts(restaurant) : [];
+        const menu = showMenu ? (snapshot?.menu || []) : [];
+        tableViewElement.innerHTML = `
+          <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div></header>
+          <div class="receipt-meta"><strong>${escapeHTML(table ? table.name : "Tisch")}</strong></div>
+          ${infoParts.length ? `<div class="table-info-grid">${infoParts.join("")}</div>` : ""}
+          ${showMenu ? (menu.length ? `<div class="receipt-meta"><strong>Speisekarte</strong></div><div class="menu-list">${renderTableMenuHTML(menu)}</div>` : `<div class="receipt-meta">Die Speisekarte ist online noch nicht verfügbar.</div>`) : ""}`;
+      } catch (error) {
+        tableViewElement.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Nicht verfügbar</h1></div></header><div class="receipt-meta">${escapeHTML(error.message || "Dieser Tisch-Link konnte nicht geöffnet werden.")}</div>`;
+      }
+    }
+
     const receiptToken = new URLSearchParams(location.search).get("receipt");
     const accessToken = new URLSearchParams(location.hash.slice(1)).get("access_token");
     const hashRefreshToken = new URLSearchParams(location.hash.slice(1)).get("refresh_token");
+    const tablePublicID = new URLSearchParams(location.search).get("r");
+    const tableID = new URLSearchParams(location.search).get("table");
     if (accessToken) {
       history.replaceState({}, "", location.pathname + location.search);
       loadGuestOverview(accessToken, hashRefreshToken);
+    } else if (tablePublicID && tableID) {
+      loadTableView(tablePublicID, tableID);
     } else if (receiptToken) {
       loadReceipt(receiptToken);
     } else if (!tokenHash) {
