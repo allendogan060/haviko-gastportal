@@ -93,6 +93,21 @@
     .loyalty-earned { margin-top: 8px; color: var(--forest); font-size: 13px; font-weight: 700; }
     .loyalty-ready { margin-top: 8px; color: var(--action); font-size: 13px; font-weight: 700; }
     .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
+    .section-divider { height: 1px; background: var(--line); margin: 4px 24px 20px; }
+    .confirmation-actions .primary,
+    .confirmation-actions .secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .confirmation-actions .primary { background: var(--action); color: #fff; }
+    .confirmation-actions .secondary { background: var(--soft, #f2f6f4); color: var(--forest-deep, #063c32); border: 1px solid var(--line); }
     .table-info-grid { padding: 0 24px 20px; display: grid; gap: 14px; }
     .table-info-grid > div strong { display: block; margin-bottom: 3px; font-size: 13px; color: var(--muted); }
     .table-info-grid a { color: var(--action); }
@@ -397,8 +412,10 @@
         </li>`).join("") || '<li><span>Noch keine besuchten Restaurants gefunden.</span></li>';
 
       const profile = overview.profile || {};
+      const displayName = profile.displayName || overview.name || "";
       const nearby = Array.isArray(overview.nearbyRestaurants) ? overview.nearbyRestaurants : [];
       const nearbyBlock = nearby.length ? `
+        <div class="section-divider"></div>
         <div class="receipt-meta"><strong>Andere Haviko-Restaurants in deiner Nähe</strong></div>
         <ul class="receipt-items">
           ${nearby.map(item => `
@@ -409,11 +426,13 @@
         </ul>` : "";
 
       overviewElement.innerHTML = `
-        <header><div><p class="eyebrow">Gastportal</p><h1>${overview.name ? `Hallo ${escapeHTML(overview.name)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
-        <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+        <header><div><p class="eyebrow">Gastportal</p><h1>${displayName ? `Guten Tag, ${escapeHTML(displayName)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
+        <div class="receipt-meta" style="padding-top:4px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
         ${loyaltySummary}
+        <div class="section-divider"></div>
         <ul class="receipt-items restaurant-list">${rows}</ul>
         ${nearbyBlock}
+        <div class="section-divider"></div>
         <div class="receipt-meta"><strong>Dein Profil</strong></div>
         <form id="profile-form" style="padding:0 24px 24px; display:grid; gap:12px;">
           <label class="field">
@@ -428,9 +447,9 @@
             <span>Adresse</span>
             <input id="profile-address" type="text" value="${escapeHTML(profile.address || "")}">
           </label>
-          <p class="field-hint">Dieses Profil gilt für alle deine Haviko-Restaurants und ist immer von dir änderbar.</p>
+          <p class="field-hint">Gilt für alle deine Reservierungen.</p>
           <p class="form-error" id="profile-message" role="alert"></p>
-          <button class="secondary" type="submit">Profil speichern</button>
+          <button class="primary full" type="submit">Profil speichern</button>
         </form>`;
 
       document.getElementById("logout-link").addEventListener("click", event => {
@@ -461,6 +480,17 @@
             })
           });
           if (!response.ok) throw new Error("Profil konnte nicht gespeichert werden.");
+          if (guestOverviewData) {
+            guestOverviewData.profile = {
+              displayName: document.getElementById("profile-name").value,
+              phone: document.getElementById("profile-phone").value,
+              address: document.getElementById("profile-address").value
+            };
+          }
+          const heading = document.querySelector("h1");
+          if (heading && document.getElementById("profile-name").value) {
+            heading.textContent = `Guten Tag, ${document.getElementById("profile-name").value}`;
+          }
           messageEl.textContent = "Profil gespeichert.";
           messageEl.classList.add("visible", "success");
         } catch (error) {
@@ -528,7 +558,7 @@
         if (lastReservation.area) repeatURL.searchParams.set("area", lastReservation.area);
       }
       const repeatButton = lastReservation
-        ? `<a class="link" href="${repeatURL.toString()}">Wie letztes Mal reservieren</a>`
+        ? `<a class="secondary" href="${repeatURL.toString()}">Wie letztes Mal reservieren</a>`
         : "";
 
       const restaurantProfileBlock = restaurant.allowsProfileEditing ? `
@@ -551,16 +581,21 @@
       overviewElement.innerHTML = `
         <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div><a class="link" href="#" id="back-to-restaurants">Zurück</a></header>
         <div class="receipt-meta">${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</div>
-        <div class="confirmation-actions" style="margin:16px 0 22px; display:flex; gap:14px; flex-wrap:wrap;">
-          <a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Neu reservieren</a>
+        <div class="confirmation-actions" style="margin:16px 24px 22px; display:flex; gap:12px; flex-wrap:wrap;">
+          <a class="primary" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Neu reservieren</a>
           ${repeatButton}
         </div>
+        <div class="section-divider"></div>
         ${infoBlock}
         ${menuBlock}
+        ${infoBlock || menuBlock ? '<div class="section-divider"></div>' : ""}
         ${loyaltyBlock}
+        ${loyaltyBlock ? '<div class="section-divider"></div>' : ""}
         ${receiptsBlock}
+        ${receiptsBlock ? '<div class="section-divider"></div>' : ""}
         <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div>
         <ul class="receipt-items">${reservationRows}</ul>
+        <div class="section-divider"></div>
         ${restaurantProfileBlock}`;
 
       document.getElementById("back-to-restaurants").addEventListener("click", event => {
