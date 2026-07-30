@@ -381,12 +381,23 @@
         </li>`).join("") || '<li><span>Noch keine besuchten Restaurants gefunden.</span></li>';
 
       const profile = overview.profile || {};
+      const nearby = Array.isArray(overview.nearbyRestaurants) ? overview.nearbyRestaurants : [];
+      const nearbyBlock = nearby.length ? `
+        <div class="receipt-meta"><strong>Andere Haviko-Restaurants in deiner Nähe</strong></div>
+        <ul class="receipt-items">
+          ${nearby.map(item => `
+            <li>
+              <span><strong>${escapeHTML(item.name || "Restaurant")}</strong><br><small>${escapeHTML(item.address || "")}</small></span>
+              <a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(item.publicID || "")}">Ansehen</a>
+            </li>`).join("")}
+        </ul>` : "";
 
       overviewElement.innerHTML = `
         <header><div><p class="eyebrow">Gastportal</p><h1>${overview.name ? `Hallo ${escapeHTML(overview.name)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
         <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
         ${loyaltySummary}
         <ul class="receipt-items restaurant-list">${rows}</ul>
+        ${nearbyBlock}
         <div class="receipt-meta"><strong>Dein Profil</strong></div>
         <form id="profile-form" style="padding:0 24px 24px; display:grid; gap:12px;">
           <label class="field">
