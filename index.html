@@ -26,7 +26,8 @@
       font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; min-width: 320px; min-height: 100dvh; color: var(--ink); background: #f4f8f6; }
+    body { margin: 0; min-width: 320px; min-height: 100dvh; color: var(--ink); background: #f4f8f6; overflow-x: hidden; }
+    .shell, .receipt, .table-info-grid, .receipt-meta, .menu-item, .receipt-items li { overflow-wrap: anywhere; word-break: break-word; }
     button, input { font: inherit; }
     button { cursor: pointer; }
     .shell { width: min(100%, 900px); margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom)); }
@@ -95,6 +96,21 @@
     .table-info-grid { padding: 0 24px 20px; display: grid; gap: 14px; }
     .table-info-grid > div strong { display: block; margin-bottom: 3px; font-size: 13px; color: var(--muted); }
     .table-info-grid a { color: var(--action); }
+    .menu-details { margin: 0 0 20px; }
+    .menu-details summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0 24px 12px;
+      color: var(--action);
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .menu-details summary::-webkit-details-marker { display: none; }
+    .menu-details summary::after { content: "▸"; transition: transform 0.15s ease; }
+    .menu-details[open] summary::after { transform: rotate(90deg); }
     .menu-list { padding: 0 24px 24px; display: grid; gap: 22px; }
     .menu-category-title {
       margin: 0 0 10px;
@@ -475,8 +491,10 @@
         <div class="table-info-grid">${infoParts.join("")}</div>` : "";
 
       const menuBlock = Array.isArray(restaurant.menu) && restaurant.menu.length ? `
-        <div class="receipt-meta"><strong>Speisekarte</strong></div>
-        <div class="menu-list">${renderTableMenuHTML(restaurant.menu)}</div>` : "";
+        <details class="menu-details">
+          <summary>Speisekarte anzeigen</summary>
+          <div class="menu-list">${renderTableMenuHTML(restaurant.menu)}</div>
+        </details>` : "";
 
       const loyaltyBlock = loyalty ? `
         <div class="receipt-meta"><strong>Stempelkarte</strong></div>
@@ -513,9 +531,22 @@
         ? `<a class="link" href="${repeatURL.toString()}">Wie letztes Mal reservieren</a>`
         : "";
 
-      const profileEditingNote = restaurant.allowsProfileEditing
-        ? "Profiländerungen sind bei diesem Restaurant erlaubt."
-        : "Dieses Restaurant erlaubt aktuell keine Profiländerungen — deine Daten für dieses Restaurant bleiben wie zuletzt hinterlegt.";
+      const restaurantProfileBlock = restaurant.allowsProfileEditing ? `
+        <div class="receipt-meta"><strong>Deine Daten bei ${escapeHTML(restaurant.name || "diesem Restaurant")}</strong></div>
+        <form id="restaurant-profile-form" data-restaurant-id="${escapeHTML(restaurantID)}" style="padding:0 24px 20px; display:grid; gap:12px;">
+          <label class="field">
+            <span>Name</span>
+            <input id="restaurant-profile-name" type="text" value="${escapeHTML(restaurant.guestName || "")}">
+          </label>
+          <label class="field">
+            <span>Telefon</span>
+            <input id="restaurant-profile-phone" type="tel" value="${escapeHTML(restaurant.guestPhone || "")}">
+          </label>
+          <p class="field-hint">Das ändert nur, was bei diesem einen Restaurant zu dir hinterlegt ist (z. B. bei „Zuletzt besucht“) — dein Hauptprofil oben und andere Restaurants bleiben davon unberührt.</p>
+          <p class="form-error" id="restaurant-profile-message" role="alert"></p>
+          <button class="secondary" type="submit">Speichern</button>
+        </form>` : `
+        <p class="field-hint" style="padding:0 24px 20px;">Dieses Restaurant erlaubt aktuell keine Profiländerungen — deine dort hinterlegten Daten bleiben wie zuletzt gespeichert. Dein Hauptprofil oben kannst du trotzdem jederzeit ändern.</p>`;
 
       overviewElement.innerHTML = `
         <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div><a class="link" href="#" id="back-to-restaurants">Zurück</a></header>
@@ -530,12 +561,40 @@
         ${receiptsBlock}
         <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div>
         <ul class="receipt-items">${reservationRows}</ul>
-        <p class="field-hint" style="padding:0 24px 20px;">${escapeHTML(profileEditingNote)}</p>`;
+        ${restaurantProfileBlock}`;
 
       document.getElementById("back-to-restaurants").addEventListener("click", event => {
         event.preventDefault();
         renderRestaurantList();
       });
+
+      const restaurantProfileForm = document.getElementById("restaurant-profile-form");
+      if (restaurantProfileForm) {
+        restaurantProfileForm.addEventListener("submit", async event => {
+          event.preventDefault();
+          const messageEl = document.getElementById("restaurant-profile-message");
+          messageEl.classList.remove("visible", "success");
+          const session = readSession();
+          if (!session?.accessToken) return;
+          try {
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/update_my_guest_reservation_contact`, {
+              method: "POST",
+              headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                p_restaurant_id: restaurantID,
+                p_name: document.getElementById("restaurant-profile-name").value,
+                p_phone: document.getElementById("restaurant-profile-phone").value
+              })
+            });
+            if (!response.ok) throw new Error("Konnte nicht gespeichert werden.");
+            messageEl.textContent = "Gespeichert.";
+            messageEl.classList.add("visible", "success");
+          } catch (error) {
+            messageEl.textContent = error.message || "Konnte nicht gespeichert werden.";
+            messageEl.classList.add("visible");
+          }
+        });
+      }
     }
 
     document.getElementById("token-form").addEventListener("submit", event => {
