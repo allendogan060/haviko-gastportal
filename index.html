@@ -86,6 +86,11 @@
     .restaurant-row { cursor: pointer; }
     .restaurant-row:hover { background: var(--soft, #f2f6f4); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 10px; }
     .restaurant-row .chevron { color: var(--muted); font-size: 22px; }
+    .loyalty-card { margin: 0 24px 20px; padding: 18px; border-radius: 14px; background: var(--soft, #f2f6f4); }
+    .loyalty-progress { font-size: 22px; font-weight: 850; color: var(--forest-deep, #063c32); }
+    .loyalty-reward { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .loyalty-earned { margin-top: 8px; color: var(--forest); font-size: 13px; font-weight: 700; }
+    .loyalty-ready { margin-top: 8px; color: var(--action); font-size: 13px; font-weight: 700; }
     .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
     .receipt-actions { padding: 0 24px 24px; }
     .receipt-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
@@ -274,14 +279,42 @@
       });
     }
 
+    function rewardText(loyalty) {
+      if (!loyalty) return "";
+      if (loyalty.rewardKind === "voucher") return `Gutschein im Wert von ${money.format(Number(loyalty.voucherValue || 0))}`;
+      if (loyalty.rewardKind === "discount") return `${Number(loyalty.discountPercentage || 0)}% Rabatt`;
+      return loyalty.freeProductName || "Prämie";
+    }
+
     function renderRestaurantDetail(restaurantID) {
-      const overview = guestOverviewData || { restaurants: [], reservations: [] };
+      const overview = guestOverviewData || { restaurants: [], reservations: [], receipts: [] };
       const restaurant = (overview.restaurants || []).find(item => item.restaurantID === restaurantID);
       if (!restaurant) return renderRestaurantList();
       const reservations = (overview.reservations || []).filter(item => item.restaurantID === restaurantID);
-      const rows = reservations.map(reservation => `
+      const receipts = (overview.receipts || []).filter(item => item.restaurantID === restaurantID);
+      const loyalty = restaurant.loyalty;
+
+      const loyaltyBlock = loyalty ? `
+        <div class="receipt-meta"><strong>Stempelkarte</strong></div>
+        <div class="loyalty-card">
+          <div class="loyalty-progress">${Number(loyalty.stampsIntoCurrentCard || 0)} / ${Number(loyalty.visitsRequired || 0)}</div>
+          <div class="loyalty-reward">${escapeHTML(rewardText(loyalty))}</div>
+          ${loyalty.rewardsEarned > 0 ? `<div class="loyalty-earned">${Number(loyalty.rewardsEarned)} Prämie${loyalty.rewardsEarned === 1 ? "" : "n"} eingelöst</div>` : ""}
+          ${loyalty.stampsIntoCurrentCard === 0 && restaurant.completedVisits > 0 ? `<div class="loyalty-ready">Belohnung fällig — beim nächsten Besuch einlösen</div>` : ""}
+        </div>` : "";
+
+      const receiptRows = receipts.map(receipt => `
         <li>
-          <span><strong>${escapeHTML(reservation.confirmationCode || "")}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")} · ${Number(reservation.guests || 0)} Gäste</small></span>
+          <span><strong>${escapeHTML(receipt.invoiceNumber || "Rechnung")}</strong><br><small>${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</small></span>
+          <a class="link" href="https://gastportal.haviko.de/?receipt=${encodeURIComponent(receipt.token)}">${money.format(Number(receipt.grossAmount || 0))}</a>
+        </li>`).join("");
+      const receiptsBlock = receipts.length ? `
+        <div class="receipt-meta"><strong>Digitale Rechnungen</strong></div>
+        <ul class="receipt-items">${receiptRows}</ul>` : "";
+
+      const reservationRows = reservations.map(reservation => `
+        <li>
+          <span><strong>${escapeHTML(reservation.confirmationCode || "")}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")} · ${Number(reservation.guests || 0)} Gäste · ${escapeHTML(reservation.area || "")}</small></span>
           <strong>${escapeHTML(statusLabels[reservation.status] || reservation.status || "")}</strong>
         </li>`).join("") || '<li><span>Noch keine Reservierungen bei diesem Restaurant.</span></li>';
 
@@ -291,8 +324,10 @@
         <div class="confirmation-actions" style="margin:16px 0 22px">
           <a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Neu reservieren</a>
         </div>
+        ${loyaltyBlock}
+        ${receiptsBlock}
         <div class="receipt-meta"><strong>Reservierungen & Besuche</strong></div>
-        <ul class="receipt-items">${rows}</ul>`;
+        <ul class="receipt-items">${reservationRows}</ul>`;
 
       document.getElementById("back-to-restaurants").addEventListener("click", event => {
         event.preventDefault();
