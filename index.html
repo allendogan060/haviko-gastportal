@@ -183,9 +183,20 @@
           <span>E-Mail-Adresse</span>
           <input id="email-input" type="email" autocomplete="email" placeholder="du@beispiel.de" required>
         </label>
-        <p class="field-hint">Du erhältst einen sicheren Anmeldelink. Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
+        <p class="field-hint">Du erhältst einen sicheren Anmeldecode per E-Mail. Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
         <p class="form-error" id="email-message" role="alert"></p>
-        <button class="primary full" type="submit">Anmeldelink senden</button>
+        <button class="primary full" type="submit">Code senden</button>
+      </form>
+
+      <form id="code-form" hidden>
+        <label class="field">
+          <span>Code aus der E-Mail</span>
+          <input id="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-stelliger Code" required>
+        </label>
+        <p class="field-hint">Wir haben dir einen Code an deine E-Mail-Adresse geschickt.</p>
+        <p class="form-error" id="code-message" role="alert"></p>
+        <button class="primary full" type="submit">Anmelden</button>
+        <button class="secondary full" type="button" id="use-other-email">Andere E-Mail-Adresse verwenden</button>
       </form>
 
       <form id="token-form" class="hidden" style="display:none">
@@ -193,12 +204,6 @@
         <p class="form-error" id="message" role="alert"></p>
         <button type="submit">Öffnen</button>
       </form>
-
-      <div id="confirm-panel" hidden>
-        <p class="field-hint">Tippe auf den Button, um deine Anmeldung abzuschließen.</p>
-        <p class="form-error" id="confirm-message" role="alert"></p>
-        <button class="primary full" id="confirm-button" type="button">Anmeldung bestätigen</button>
-      </div>
     </section>
   </div>
 
@@ -640,6 +645,8 @@
       loadReceipt(token);
     });
 
+    let pendingGuestEmail = "";
+
     document.getElementById("email-form").addEventListener("submit", async event => {
       event.preventDefault();
       const email = document.getElementById("email-input").value.trim().toLowerCase();
@@ -650,46 +657,53 @@
           headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json" },
           body: JSON.stringify({ email, create_user: true, options: { emailRedirectTo: "https://gastportal.haviko.de/" } })
         });
-        if (!response.ok) throw new Error("Der Anmeldelink konnte gerade nicht gesendet werden.");
-        showEmailMessage("Wenn diese Adresse für einen persönlichen Gastzugang genutzt werden kann, wurde ein sicherer Anmeldelink gesendet.", true);
+        if (!response.ok) throw new Error("Der Code konnte gerade nicht gesendet werden.");
+        pendingGuestEmail = email;
+        document.getElementById("email-form").hidden = true;
+        document.getElementById("code-form").hidden = false;
+        document.getElementById("code-input").focus();
       } catch (error) {
-        showEmailMessage(error.message || "Der Anmeldelink konnte nicht gesendet werden.", false);
+        showEmailMessage(error.message || "Der Code konnte nicht gesendet werden.", false);
       }
     });
 
-    const confirmPanel = document.getElementById("confirm-panel");
-    const confirmButton = document.getElementById("confirm-button");
-    const confirmMessage = document.getElementById("confirm-message");
-    const tokenHash = new URLSearchParams(location.search).get("token_hash");
-    const otpType = new URLSearchParams(location.search).get("type");
+    document.getElementById("use-other-email").addEventListener("click", () => {
+      document.getElementById("code-form").hidden = true;
+      document.getElementById("email-form").hidden = false;
+      document.getElementById("code-input").value = "";
+      const codeMessage = document.getElementById("code-message");
+      codeMessage.textContent = "";
+      codeMessage.classList.remove("visible");
+    });
 
-    if (tokenHash && otpType) {
-      document.getElementById("email-form").hidden = true;
-      confirmPanel.hidden = false;
-      confirmButton.addEventListener("click", async () => {
-        confirmButton.disabled = true;
-        confirmButton.textContent = "Wird bestätigt …";
-        try {
-          const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
-            method: "POST",
-            headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
-            body: JSON.stringify({ type: otpType, token_hash: tokenHash })
-          });
-          const result = await response.json();
-          if (!response.ok || !result.access_token) {
-            throw new Error("Der Anmeldelink ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen an.");
-          }
-          history.replaceState({}, "", location.pathname);
-          confirmPanel.hidden = true;
-          loadGuestOverview(result.access_token, result.refresh_token);
-        } catch (error) {
-          confirmMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
-          confirmMessage.classList.add("visible");
-          confirmButton.disabled = false;
-          confirmButton.textContent = "Anmeldung bestätigen";
+    document.getElementById("code-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const codeMessage = document.getElementById("code-message");
+      codeMessage.classList.remove("visible");
+      const code = document.getElementById("code-input").value.trim();
+      if (!code) return;
+      const submitButton = event.target.querySelector("button[type=submit]");
+      submitButton.disabled = true;
+      submitButton.textContent = "Wird geprüft …";
+      try {
+        const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "email", email: pendingGuestEmail, token: code })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.access_token) {
+          throw new Error("Der Code ist ungültig oder abgelaufen. Bitte fordere einen neuen an.");
         }
-      });
-    }
+        loadGuestOverview(result.access_token, result.refresh_token);
+      } catch (error) {
+        codeMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
+        codeMessage.classList.add("visible");
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = "Anmelden";
+      }
+    });
 
     function buildRestaurantInfoParts(restaurant) {
       const info = [];
@@ -772,7 +786,7 @@
       loadTableView(tablePublicID, tableID);
     } else if (receiptToken) {
       loadReceipt(receiptToken);
-    } else if (!tokenHash) {
+    } else {
       const session = readSession();
       if (session && session.accessToken) {
         loadGuestOverview(session.accessToken, session.refreshToken);
