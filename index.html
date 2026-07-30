@@ -240,20 +240,74 @@
       waitlisted: "Warteliste"
     };
 
-    async function loadGuestOverview(accessToken) {
+    const SESSION_KEY = "haviko_gastportal_session";
+
+    function saveSession(accessToken, refreshToken) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken, refreshToken }));
+      } catch {}
+    }
+
+    function readSession() {
+      try {
+        return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      } catch {
+        return null;
+      }
+    }
+
+    function clearSession() {
+      try {
+        localStorage.removeItem(SESSION_KEY);
+      } catch {}
+    }
+
+    async function refreshSession(refreshToken) {
+      if (!refreshToken) return null;
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (!result.access_token) return null;
+      return result;
+    }
+
+    function logout() {
+      clearSession();
+      window.location.href = "https://gastportal.haviko.de/";
+    }
+
+    async function loadGuestOverview(accessToken, refreshToken) {
       landing.hidden = true;
       overviewElement.classList.add("visible");
       overviewElement.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Dein Profil wird geladen…</h1></div></header>';
       try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+        let response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
           method: "POST",
           headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
           body: "{}"
         });
+        if (response.status === 401 && refreshToken) {
+          const refreshed = await refreshSession(refreshToken);
+          if (!refreshed) throw new Error("Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.");
+          accessToken = refreshed.access_token;
+          refreshToken = refreshed.refresh_token || refreshToken;
+          saveSession(accessToken, refreshToken);
+          response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+            method: "POST",
+            headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
+            body: "{}"
+          });
+        }
         if (!response.ok) throw new Error("Dein Gastprofil ist noch nicht bereit. Bitte öffne den Link noch einmal, nachdem das Restaurant deine Reservierung gespeichert hat.");
+        saveSession(accessToken, refreshToken);
         guestOverviewData = await response.json();
         renderRestaurantList();
       } catch (error) {
+        clearSession();
         overviewElement.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Profil nicht verfügbar</h1></div><a class="link" href="https://gastportal.haviko.de/">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Gastzugang konnte nicht geöffnet werden.")}</div>`;
       }
     }
@@ -268,9 +322,14 @@
         </li>`).join("") || '<li><span>Noch keine besuchten Restaurants gefunden.</span></li>';
 
       overviewElement.innerHTML = `
-        <header><div><p class="eyebrow">Gastportal</p><h1>Besuchte Restaurants</h1></div><a class="link" href="https://gastportal.haviko.de/">Abmelden</a></header>
+        <header><div><p class="eyebrow">Gastportal</p><h1>${overview.name ? `Hallo ${escapeHTML(overview.name)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
         <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
         <ul class="receipt-items restaurant-list">${rows}</ul>`;
+
+      document.getElementById("logout-link").addEventListener("click", event => {
+        event.preventDefault();
+        logout();
+      });
 
       overviewElement.querySelectorAll(".restaurant-row[data-restaurant-id]").forEach(row => {
         const id = row.getAttribute("data-restaurant-id");
@@ -384,7 +443,7 @@
           }
           history.replaceState({}, "", location.pathname);
           confirmPanel.hidden = true;
-          loadGuestOverview(result.access_token);
+          loadGuestOverview(result.access_token, result.refresh_token);
         } catch (error) {
           confirmMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
           confirmMessage.classList.add("visible");
@@ -396,11 +455,17 @@
 
     const receiptToken = new URLSearchParams(location.search).get("receipt");
     const accessToken = new URLSearchParams(location.hash.slice(1)).get("access_token");
+    const hashRefreshToken = new URLSearchParams(location.hash.slice(1)).get("refresh_token");
     if (accessToken) {
       history.replaceState({}, "", location.pathname + location.search);
-      loadGuestOverview(accessToken);
+      loadGuestOverview(accessToken, hashRefreshToken);
     } else if (receiptToken) {
       loadReceipt(receiptToken);
+    } else if (!tokenHash) {
+      const session = readSession();
+      if (session && session.accessToken) {
+        loadGuestOverview(session.accessToken, session.refreshToken);
+      }
     }
   </script>
 </body>
