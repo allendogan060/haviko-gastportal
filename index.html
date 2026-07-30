@@ -280,11 +280,41 @@
       window.location.href = "https://gastportal.haviko.de/";
     }
 
+    async function guestPortalError(response) {
+      const payload = await response.json().catch(() => ({}));
+      const detail = String(
+        payload.message || payload.hint || payload.details || ""
+      );
+      const functionMissing = response.status === 404 ||
+        payload.code === "PGRST202" ||
+        /get_my_guest_portal_overview|get_guest_portal_visibility/i.test(detail);
+
+      if (functionMissing) {
+        return "Das Gastportal wird gerade eingerichtet. Die aktuelle Gastportal-Migration muss noch in Supabase ausgeführt werden.";
+      }
+      if (response.status === 401 || response.status === 403) {
+        return "Deine Anmeldung konnte nicht geprüft werden. Bitte fordere einen neuen Anmeldelink an.";
+      }
+      return "Dein Profil konnte gerade nicht geladen werden. Bitte versuche es in einem Moment erneut.";
+    }
+
+    function renderGuestPortalError(text) {
+      overviewElement.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>Profil vorübergehend nicht verfügbar</h1></div></header>
+        <div class="receipt-meta">${escapeHTML(text)}</div>
+        <div class="receipt-actions"><button type="button" id="retry-overview">Erneut versuchen</button></div>`;
+      document.getElementById("retry-overview").addEventListener("click", () => {
+        const session = readSession();
+        if (session?.accessToken) loadGuestOverview(session.accessToken, session.refreshToken);
+      });
+    }
+
     async function loadGuestOverview(accessToken, refreshToken) {
       landing.hidden = true;
       overviewElement.classList.add("visible");
       overviewElement.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Dein Profil wird geladen…</h1></div></header>';
       try {
+        saveSession(accessToken, refreshToken);
         let response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
           method: "POST",
           headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${accessToken}`, "Content-Type": "application/json" },
@@ -302,13 +332,13 @@
             body: "{}"
           });
         }
-        if (!response.ok) throw new Error("Dein Gastprofil ist noch nicht bereit. Bitte öffne den Link noch einmal, nachdem das Restaurant deine Reservierung gespeichert hat.");
+        if (!response.ok) throw new Error(await guestPortalError(response));
         saveSession(accessToken, refreshToken);
         guestOverviewData = await response.json();
         renderRestaurantList();
       } catch (error) {
-        clearSession();
-        overviewElement.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Profil nicht verfügbar</h1></div><a class="link" href="https://gastportal.haviko.de/">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Gastzugang konnte nicht geöffnet werden.")}</div>`;
+        if (error.message && error.message.includes("abgelaufen")) clearSession();
+        renderGuestPortalError(error.message || "Der Gastzugang konnte nicht geöffnet werden.");
       }
     }
 
