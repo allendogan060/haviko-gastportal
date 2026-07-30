@@ -370,6 +370,10 @@
     function renderRestaurantList() {
       const overview = guestOverviewData || { email: "", restaurants: [] };
       const restaurants = Array.isArray(overview.restaurants) ? overview.restaurants : [];
+      const loyaltyCount = restaurants.filter(restaurant => !!restaurant.loyalty).length;
+      const loyaltySummary = loyaltyCount > 0
+        ? `<div class="receipt-meta">Du hast bei ${loyaltyCount} Haviko-Restaurant${loyaltyCount === 1 ? "" : "s"} Stempelkarten.</div>`
+        : "";
       const rows = restaurants.map(restaurant => `
         <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
           <span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong><br><small>${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</small></span>
@@ -379,6 +383,7 @@
       overviewElement.innerHTML = `
         <header><div><p class="eyebrow">Gastportal</p><h1>${overview.name ? `Hallo ${escapeHTML(overview.name)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
         <div class="receipt-meta">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+        ${loyaltySummary}
         <ul class="receipt-items restaurant-list">${rows}</ul>`;
 
       document.getElementById("logout-link").addEventListener("click", event => {
