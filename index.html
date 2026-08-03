@@ -156,11 +156,17 @@
     .receipt-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
     .message { display: none; margin-top: 18px; padding: 14px; border-radius: 14px; background: #fff0e9; color: #8b3b23; line-height: 1.45; }
     .message.visible { display: block; }
-    .footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; margin-top: 34px; color: var(--muted); font-size: 13px; }
-    .footer-brand { font-weight: 400; }
-    .footer-brand strong { font-weight: 800; color: var(--forest); }
-    .footer a:link, .footer a:visited { color: var(--muted); text-decoration: none; }
-    .footer a:hover { color: var(--forest); }
+    .site-footer {
+      margin-top: 34px;
+      padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+    }
+    .footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; }
+    .footer-brand { color: var(--muted); font-size: 13px; }
+    .footer-brand strong { color: var(--forest); font-weight: 800; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; font-size: 13px; }
+    .footer-links a:link, .footer-links a:visited { color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--forest); }
   </style>
 </head>
 <body>
@@ -220,11 +226,15 @@
     <section id="guest-overview" class="receipt card" aria-live="polite"></section>
     <section id="table-view" class="receipt card" aria-live="polite"></section>
 
-    <footer class="footer">
-      <span class="footer-brand"><strong>Haviko</strong> Gastportal</span>
-      <a href="https://haviko.de/datenschutz">Datenschutz</a>
-      <a href="https://haviko.de/impressum">Impressum</a>
-      <a href="https://support.haviko.de/">Support</a>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span class="footer-brand"><strong>Haviko</strong> Gastportal</span>
+        <div class="footer-links">
+          <a href="https://haviko.de/datenschutz">Datenschutz</a>
+          <a href="https://haviko.de/impressum">Impressum</a>
+          <a href="https://support.haviko.de/">Support</a>
+        </div>
+      </div>
     </footer>
   </main>
   <script>
