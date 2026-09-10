@@ -1,0 +1,3064 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#075f4e">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="description" content="Dein persönlicher Bereich für Reservierungen, Rechnungen und Besuche bei Haviko-Restaurants.">
+  <meta name="application-name" content="Haviko Gastportal">
+  <meta name="apple-mobile-web-app-title" content="Haviko Gastportal">
+  <meta name="apple-itunes-app" content="app-id=6794772408, app-argument=https://gastportal.haviko.de/">
+  <link rel="icon" type="image/png" sizes="48x48" href="https://login.haviko.de/assets/favicon-48.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://login.haviko.de/assets/apple-touch-icon.png">
+  <title>Gastportal - Haviko</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    :root {
+      --forest: #075f4e;
+      --forest-deep: #063c32;
+      --action: #087966;
+      --orange: #ff6a4f;
+      --ink: #14211d;
+      --muted: #687671;
+      --line: #d9e4e0;
+      --surface: #ffffff;
+      --soft: #f2f6f4;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    .dev-banner { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: #ffd54a; color: #5a4300; font-size: 13px; font-weight: 800; text-align: center; }
+    .dev-banner a { display: inline-flex; align-items: center; gap: 4px; color: #5a4300; text-decoration: underline; }
+    .dev-banner button { border: 0; background: none; color: #5a4300; font-weight: 900; font-size: 17px; padding: 0 2px; line-height: 1; }
+    body { margin: 0; min-width: 320px; min-height: 100dvh; color: var(--ink); background: #f4f8f6; overflow-x: hidden; }
+    .shell, .receipt, .table-info-grid, .receipt-meta, .menu-item, .receipt-items li { overflow-wrap: anywhere; word-break: break-word; }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(100%, 900px); margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px max(32px, env(safe-area-inset-bottom)); }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; margin-bottom: clamp(32px, 8vw, 70px); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; color: var(--forest-deep); font-size: 20px; font-weight: 800; text-decoration: none; }
+    .brand img { width: 39px; height: 39px; border-radius: 11px; box-shadow: 0 8px 22px rgba(7,95,78,.2); }
+    .link { color: var(--forest); text-decoration: none; font-weight: 700; background: none; border: 0; padding: 0; }
+    .eyebrow { display: inline-flex; gap: 8px; align-items: center; padding: 7px 10px; border-radius: 999px; background: #def1eb; color: var(--forest); font-size: 13px; font-weight: 800; }
+    .card { border: 1px solid rgba(7,95,78,.14); border-radius: 22px; background: var(--surface); box-shadow: 0 20px 58px rgba(6,60,50,.10); }
+    .access-card h2, .side-card h2 { margin: 0 0 8px; font-size: 21px; }
+    .access-card p, .side-card p { margin: 0; color: var(--muted); line-height: 1.45; }
+    .access-form { display: flex; gap: 10px; margin-top: 18px; }
+    input, select, textarea { min-width: 0; }
+    input, select { flex: 1; min-height: 50px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+    textarea { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); resize: vertical; }
+    input:focus, select:focus, textarea:focus { outline: 3px solid rgba(8,121,102,.18); border-color: var(--action); }
+    .primary { min-height: 50px; padding: 0 16px; border: 0; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; }
+    .primary:disabled { opacity: .55; }
+    .hint { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    .side-card { padding: 22px; }
+    .feature { display: grid; grid-template-columns: 42px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .feature:last-child { border-bottom: 0; }
+    .icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: #e2f2ee; color: var(--forest); font-size: 18px; font-weight: 900; }
+    .feature strong { display: block; margin-bottom: 3px; }
+    .feature span { color: var(--muted); font-size: 14px; line-height: 1.4; }
+
+    /* Login-page-matching auth layout */
+    .auth-shell { min-height: 100vh; display: grid; grid-template-columns: minmax(360px, 0.9fr) minmax(420px, 1.1fr); }
+    .auth-shell[hidden] { display: none; }
+    .auth-brand { min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; padding: clamp(30px, 5vw, 68px); background: linear-gradient(rgba(8, 55, 45, 0.94), rgba(13, 74, 60, 0.94)), var(--forest); color: white; }
+    .brand-lockup { display: flex; align-items: center; gap: 12px; font-size: 22px; font-weight: 800; }
+    .brand-lockup img { width: 39px; height: 39px; border-radius: 11px; }
+    .auth-brand .eyebrow { background: transparent; padding: 0; color: #80d5bd; }
+    .auth-brand h1 { max-width: 620px; margin: 6px 0 14px; color: #fff; font-size: clamp(38px, 4vw, 54px); line-height: 1.05; letter-spacing: 0; }
+    .auth-brand p:not(.eyebrow) { max-width: 570px; color: rgba(255,255,255,.74); font-size: 16px; line-height: 1.55; }
+    .auth-points { display: grid; gap: 7px; }
+    .auth-points span { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 700; }
+    .auth-points span::before { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #80d5bd; content: ""; }
+    .auth-panel { width: min(100% - 40px, 500px); min-width: 0; margin: auto; padding: 34px; }
+    .auth-heading h2 { margin: 0; font-size: 32px; }
+    .auth-heading > p:last-child { margin: 8px 0 24px; color: var(--muted); }
+    .auth-steps { display: flex; gap: 6px; margin-bottom: 18px; }
+    .auth-steps span { flex: 1; height: 4px; border-radius: 999px; background: var(--line); }
+    .auth-steps span.done, .auth-steps span.active { background: var(--action); }
+    .field { display: grid; gap: 7px; margin-bottom: 16px; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field > span { color: var(--ink); font-size: 13px; font-weight: 750; }
+    .primary.full, .secondary.full { width: 100%; }
+    .secondary { min-height: 50px; padding: 0 16px; border: 1px solid var(--line); border-radius: 12px; color: var(--forest); background: #fff; font-weight: 800; }
+    .divider { display: flex; align-items: center; gap: 10px; margin: 22px 0; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+    .field-hint { margin: -5px 0 16px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .form-error { display: none; margin: 0 0 16px; padding: 10px 12px; border: 1px solid #efbdc4; border-radius: 6px; background: #fdecee; color: #9b2f3d; font-size: 13px; }
+    .form-error.visible { display: block; }
+    .form-error.success { border-color: #a9dcc7; background: #e6f6ee; color: #0a6b45; }
+    @media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-brand { min-height: 0; padding: 24px 20px 30px; } .auth-panel { width: 100%; margin: 0; padding: 24px 20px; } }
+    .receipt { display: none; max-width: 900px; margin: 0 auto; overflow: hidden; }
+    .receipt.visible { display: block; }
+    .receipt header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 28px 24px; background: linear-gradient(135deg, var(--forest) 0%, var(--action) 100%); border-radius: 22px 22px 0 0; }
+    .receipt header .eyebrow { background: rgba(255,255,255,.16); color: #fff; }
+    .receipt header h1 { color: #fff; }
+    .receipt header .link { color: #fff; opacity: .92; }
+    .receipt h1 { margin: 0; font-size: 30px; }
+    .receipt-meta { padding: 20px 24px; color: var(--muted); display: grid; gap: 7px; font-size: 14px; }
+    .receipt-meta strong { display: block; margin: 6px 0 2px; font-size: 15px; color: var(--ink); }
+    .receipt-items { margin: 0; padding: 0 24px 20px; list-style: none; }
+    .receipt-items li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
+    .restaurant-row { cursor: pointer; flex-wrap: wrap; }
+    .restaurant-row:hover { background: var(--soft, #f2f6f4); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 10px; }
+    .restaurant-row .chevron { color: var(--muted); font-size: 22px; }
+    .favorite-toggle { background: none; border: none; padding: 4px; font-size: 21px; line-height: 1; color: var(--muted); }
+    .favorite-toggle.active { color: var(--orange); }
+    .loyalty-card { margin: 0 24px 20px; padding: 18px; border-radius: 14px; background: var(--soft, #f2f6f4); }
+    .loyalty-progress { font-size: 22px; font-weight: 850; color: var(--forest-deep, #063c32); }
+    .loyalty-stamps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .loyalty-stamps i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--action); font-style: normal; font-size: 13px; color: var(--action); }
+    .loyalty-stamps i.filled { background: var(--action); color: #fff; }
+    .loyalty-reward { margin-top: 4px; color: var(--muted); font-size: 14px; }
+    .loyalty-earned { margin-top: 8px; color: var(--forest); font-size: 13px; font-weight: 700; }
+    .loyalty-ready { margin-top: 8px; color: var(--action); font-size: 13px; font-weight: 700; }
+    .voucher-code { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-family: ui-monospace, "SF Mono", monospace; font-weight: 800; letter-spacing: 1px; }
+    .voucher-copy { min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--forest); font-size: 12px; font-weight: 700; }
+    .receipt-total { display: flex; justify-content: space-between; gap: 12px; padding: 20px 24px 24px; border-top: 1px solid var(--line); font-size: 21px; font-weight: 850; }
+    .section-divider { height: 1px; background: var(--line); margin: 4px 24px 20px; }
+    .confirmation-actions .primary,
+    .confirmation-actions .secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 0 18px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    .confirmation-actions .primary { background: var(--action); color: #fff; }
+    .confirmation-actions .secondary { background: var(--soft, #f2f6f4); color: var(--forest-deep, #063c32); border: 1px solid var(--line); }
+    .table-info-grid { padding: 0 24px 20px; display: grid; gap: 14px; }
+    .table-info-grid > div strong { display: block; margin-bottom: 3px; font-size: 13px; color: var(--muted); }
+    .table-info-grid a { color: var(--action); }
+    .menu-details { margin: 0 0 20px; }
+    .menu-details summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 0 24px 12px;
+      color: var(--action);
+      font-weight: 800;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .menu-details summary::-webkit-details-marker { display: none; }
+    .menu-details summary::after { content: "▸"; transition: transform 0.15s ease; }
+    .menu-details[open] summary::after { transform: rotate(90deg); }
+    .menu-list { padding: 0 24px 24px; display: grid; gap: 22px; }
+    .menu-category-title {
+      margin: 0 0 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--action, #087966);
+      color: var(--forest-deep, #063c32);
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .menu-items { display: grid; gap: 10px; }
+    .menu-item { display: flex; align-items: baseline; gap: 8px; }
+    .menu-item-name { color: var(--ink, #14211d); font-size: 15px; font-weight: 600; }
+    .menu-item-dots {
+      flex: 1;
+      border-bottom: 1px dotted var(--line, #d9e4e0);
+      transform: translateY(-4px);
+      min-width: 12px;
+    }
+    .menu-item-price { color: var(--forest-deep, #063c32); font-size: 15px; font-weight: 700; white-space: nowrap; }
+    .receipt-actions { padding: 0 24px 24px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .receipt-actions a, .receipt-actions button { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 16px; border: 0; border-radius: 12px; color: #fff; background: var(--action); font-weight: 800; text-decoration: none; }
+    .message { display: none; margin-top: 18px; padding: 14px; border-radius: 14px; background: #fff0e9; color: #8b3b23; line-height: 1.45; }
+    .message.visible { display: block; }
+    .site-footer {
+      margin-top: 34px;
+      padding: 28px 0 max(28px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+    }
+    .footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 18px; }
+    .footer-brand { color: var(--muted); font-size: 13px; }
+    .footer-brand strong { color: var(--forest); font-weight: 800; }
+    .footer-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; font-size: 13px; }
+    .footer-links a:link, .footer-links a:visited { color: var(--muted); text-decoration: none; }
+    .footer-links a:hover { color: var(--forest); }
+    .profile-section-title { margin: 0; padding: 20px 24px 8px; color: var(--ink); font-size: 17px; }
+    .notification-list { padding-bottom: 8px; }
+    .notification-row { align-items: flex-start !important; cursor: pointer; }
+    .notification-dot { width: 9px; height: 9px; margin-top: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--orange); }
+    .notif-day-title { margin: 0; padding: 16px 24px 6px; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .receipt-link { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 16px; color: inherit; text-decoration: none; }
+    .review-dialog, .chat-dialog { width: min(720px, calc(100% - 24px)); max-height: min(880px, calc(100dvh - 24px)); padding: 0; border: 0; border-radius: 22px; color: var(--ink); background: #fff; box-shadow: 0 28px 90px rgba(6,60,50,.25); }
+    .review-dialog::backdrop, .chat-dialog::backdrop { background: rgba(3,30,25,.48); backdrop-filter: blur(6px); }
+    .review-dialog-shell { max-height: min(880px, calc(100dvh - 24px)); overflow: auto; }
+    .review-dialog-header { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 20px 22px; border-bottom: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(18px); }
+    .review-dialog-header h2 { margin: 0; font-size: 23px; }
+    .icon-button { position: relative; display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--ink); background: #fff; font-size: 22px; }
+    .review-dialog-content { display: grid; gap: 18px; padding: 20px 22px 28px; }
+    .review-insight { display: grid; grid-template-columns: 44px 1fr; gap: 13px; padding: 17px; border: 1px solid rgba(8,121,102,.18); border-radius: 16px; background: #eaf6f2; }
+    .review-insight-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; color: #fff; background: var(--action); font-size: 21px; }
+    .review-insight strong { display: block; margin-bottom: 5px; color: var(--forest-deep); }
+    .review-insight p { min-height: 42px; margin: 0; color: #315047; line-height: 1.5; }
+    .review-controls { display: flex; flex-wrap: wrap; gap: 10px; }
+    .review-controls select { min-height: 42px; padding: 0 36px 0 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: #fff; font: inherit; }
+    .review-filter { min-height: 42px; padding: 0 13px; border: 1px solid var(--line); border-radius: 999px; color: var(--forest); background: #fff; font-weight: 750; }
+    .review-filter.active { border-color: var(--action); color: #fff; background: var(--action); }
+    .review-list { display: grid; gap: 12px; }
+    .review-card { padding: 17px; border: 1px solid var(--line); border-radius: 15px; background: #fff; }
+    .review-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .review-stars { color: #d58a00; letter-spacing: 1px; white-space: nowrap; }
+    .review-card p { margin: 10px 0; line-height: 1.5; }
+    .review-meta { color: var(--muted); font-size: 12px; }
+    .review-reply { margin-top: 13px; padding: 13px; border-left: 3px solid var(--action); border-radius: 0 10px 10px 0; background: var(--soft); }
+    .review-reply strong { display: block; margin-bottom: 4px; color: var(--forest); font-size: 13px; }
+    .review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 13px; }
+    .review-action { min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--forest); background: #fff; font-weight: 700; }
+    .review-action.active { border-color: #a8d8ca; background: #e5f4ef; }
+    .review-report { margin-top: 10px; }
+    .review-report summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+    .review-report-grid { display: grid; gap: 9px; margin-top: 10px; }
+    .review-report select, .review-report textarea, .review-compose textarea { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); background: #fff; font: inherit; }
+    .review-compose { padding: 17px; border: 1px solid var(--line); border-radius: 15px; background: var(--soft); }
+    .review-compose h3 { margin: 0 0 5px; }
+    .review-compose p { margin: 0 0 14px; color: var(--muted); font-size: 13px; }
+    .compose-stars { display: flex; gap: 7px; margin-bottom: 12px; }
+    .compose-stars input { position: absolute; opacity: 0; pointer-events: none; }
+    .compose-stars label { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 10px; color: #9caaa5; background: #fff; cursor: pointer; font-size: 21px; }
+    .compose-stars input:checked + label { border-color: #d9a132; color: #b87500; background: #fff6dd; }
+    .review-empty { padding: 30px 18px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); text-align: center; }
+    @media (max-width: 600px) {
+      .review-dialog, .chat-dialog { width: 100%; max-height: calc(100dvh - 8px); margin: auto 0 0; border-radius: 22px 22px 0 0; }
+      .review-dialog-shell { max-height: calc(100dvh - 8px); }
+      .review-dialog-content { padding: 17px 16px 28px; }
+      .review-insight { grid-template-columns: 38px 1fr; }
+      .review-insight-icon { width: 38px; height: 38px; }
+    }
+    .portal-topbar { display: none; align-items: center; justify-content: space-between; width: min(100%, 900px); margin: 0 auto 14px; padding: 0 18px; }
+    .portal-topbar:not([hidden]) { display: flex; }
+    .portal-topbar-title { font-size: 15px; font-weight: 800; color: var(--forest-deep); }
+    .portal-topbar-actions { display: flex; gap: 10px; }
+    .notif-badge { position: absolute; top: -3px; right: -3px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--orange); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+    .maintenance-banner, .incident-banner, .offline-banner { width: min(100%, 900px); margin: 0 auto 14px; padding: 12px 18px; border-radius: 14px; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .maintenance-banner, .incident-banner { background: #fdecee; color: #9b2f3d; }
+    .offline-banner { background: #fff0e9; color: #8b3b23; justify-content: center; }
+    .banner-dismiss { border: 0; background: none; color: inherit; font-weight: 800; font-size: 16px; padding: 0 4px; }
+    .portal-tabs { display: none; gap: 8px; width: min(100%, 900px); margin: 0 auto 14px; padding: 0 18px; }
+    .portal-tabs:not([hidden]) { display: flex; }
+    .portal-tabs .tab-btn { flex: 1; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--muted); font-weight: 800; font-size: 14px; }
+    .portal-tabs .tab-btn.active { border-color: var(--forest); background: var(--forest); color: #fff; }
+    #guest-map { padding: 0; overflow: hidden; }
+    #guest-map .map-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px 4px; }
+    #guest-map .map-header h2 { margin: 0; font-size: 19px; }
+    .map-filters { display: flex; gap: 8px; overflow-x: auto; padding: 12px 20px 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .map-filters::-webkit-scrollbar { display: none; }
+    .map-filter-btn { flex: 0 0 auto; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: #fff; color: var(--forest); font-weight: 750; font-size: 13px; white-space: nowrap; }
+    .map-filter-btn.active { border-color: var(--forest); background: var(--forest); color: #fff; }
+    #leaflet-map { width: 100%; height: min(64vh, 560px); margin-top: 12px; background: var(--soft); }
+    .map-legend { display: flex; flex-wrap: wrap; gap: 12px; padding: 12px 20px 18px; font-size: 12px; color: var(--muted); }
+    .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .map-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .map-status { padding: 40px 20px; text-align: center; color: var(--muted); }
+    .leaflet-popup-content strong { display: block; margin-bottom: 2px; }
+    .leaflet-popup-content a.link { font-size: 13px; }
+    .search-field { margin: 0 0 4px; padding: 0 24px; }
+    .card-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+    .type-badge, .price-badge, .rating-badge { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .price-badge { color: var(--forest); font-weight: 800; }
+    .rating-badge { color: #b87500; font-weight: 800; }
+    .status-pill { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .status-pill.open { background: #e1f3e6; color: #1f7a3d; }
+    .status-pill.closed { background: #fdecee; color: #9b2f3d; }
+    .quick-links { padding: 0 24px 4px; display: grid; gap: 10px; }
+    .quick-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink); font-weight: 700; text-align: left; }
+    .quick-link span.chevron { color: var(--muted); font-size: 20px; }
+    .phone-field { display: flex; gap: 8px; }
+    .phone-field select { min-width: 92px; flex: 0 0 auto; }
+    .danger-zone { margin: 24px; padding: 18px; border: 1px solid #efbdc4; border-radius: 14px; background: #fdecee; }
+    .danger-zone h3 { margin: 0 0 6px; color: #9b2f3d; font-size: 16px; }
+    .danger-zone p { margin: 0 0 14px; color: #7c2531; font-size: 13px; line-height: 1.5; }
+    .danger-button { min-height: 46px; padding: 0 16px; border: 0; border-radius: 12px; background: #c23b4a; color: #fff; font-weight: 800; }
+    .danger-button:disabled { opacity: .5; }
+    .stepper { display: flex; align-items: center; gap: 14px; }
+    .stepper button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 18px; font-weight: 800; color: var(--forest); }
+    .stepper span { min-width: 24px; text-align: center; font-weight: 800; }
+    .reservation-block { padding: 0 24px 4px; }
+    .reservation-edit-form { display: grid; gap: 12px; padding: 14px; margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--soft); }
+    .reservation-actions-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+    .text-button { border: 0; background: none; font-weight: 700; padding: 0; }
+    .wallet-code-box { display: grid; place-items: center; gap: 14px; padding: 30px 24px; text-align: center; }
+    .wallet-code-box canvas { border-radius: 16px; }
+    .wallet-code-text { font-family: ui-monospace, "SF Mono", monospace; font-size: 20px; font-weight: 800; letter-spacing: 3px; }
+    .chat-fab { position: fixed; left: 18px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: 20; display: flex; align-items: center; gap: 8px; padding: 0 18px; min-height: 52px; border: 0; border-radius: 999px; background: var(--forest); color: #fff; font-weight: 800; box-shadow: 0 14px 34px rgba(6,60,50,.28); }
+    .chat-fab .dot { width: 9px; height: 9px; border-radius: 50%; background: #80d5bd; }
+    .chat-shell { display: flex; flex-direction: column; max-height: min(880px, calc(100dvh - 24px)); }
+    .chat-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .chat-header h2 { margin: 0; font-size: 18px; }
+    .chat-messages { flex: 1; overflow: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+    .chat-empty { text-align: center; color: var(--muted); padding: 30px 10px; font-size: 14px; }
+    .chat-bubble { max-width: 82%; padding: 10px 14px; border-radius: 16px; font-size: 14px; line-height: 1.45; }
+    .chat-bubble.user { align-self: flex-end; background: var(--action); color: #fff; border-bottom-right-radius: 4px; }
+    .chat-bubble.assistant { align-self: flex-start; background: var(--soft); color: var(--ink); border-bottom-left-radius: 4px; }
+    .chat-typing { display: flex; gap: 4px; align-self: flex-start; padding: 10px 14px; }
+    .chat-typing span { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: chatPulse 1s infinite ease-in-out; }
+    .chat-typing span:nth-child(2) { animation-delay: .15s; }
+    .chat-typing span:nth-child(3) { animation-delay: .3s; }
+    @keyframes chatPulse { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+    .chat-form { display: flex; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+    .chat-form input { flex: 1; }
+    .chat-form button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; background: var(--action); color: #fff; font-weight: 800; }
+    .chat-menu-btn { border: 1px solid var(--line); background: #fff; border-radius: 10px; min-height: 36px; padding: 0 10px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div id="dev-banner" class="dev-banner" hidden>
+    <span>Haviko ist aktuell noch in der Entwicklung.</span>
+    <a href="https://status.haviko.de/" aria-label="Zur Status-Seite">Status <span aria-hidden="true">›</span></a>
+    <button type="button" id="dev-banner-dismiss" aria-label="Ausblenden">×</button>
+  </div>
+  <div id="landing" class="auth-shell">
+    <section class="auth-brand">
+      <div class="brand-lockup"><img src="https://login.haviko.de/assets/haviko-app-icon.png" alt=""><span>Haviko</span></div>
+      <div>
+        <p class="eyebrow">Persönlich &amp; geschützt</p>
+        <h1>Dein Besuch. Alles an einem Ort.</h1>
+        <p>Reservierungen, digitale Rechnungen, Besuche, Feedback und Stempelkarten bleiben bei dir – immer nur für das Restaurant, dem du sie freigibst.</p>
+      </div>
+      <div class="auth-points" aria-label="Funktionen">
+        <span>Digitale Rechnung &amp; Trinkgeld-Link</span>
+        <span>Reservierungen ansehen und verwalten</span>
+        <span>Stempelkarte und Feedback</span>
+      </div>
+    </section>
+
+    <section class="auth-panel">
+      <div id="login-views">
+        <div class="auth-heading">
+          <p class="eyebrow">Haviko Gastportal</p>
+          <h2>Anmelden</h2>
+          <p>Mit deiner E-Mail-Adresse, ganz ohne Passwort.</p>
+        </div>
+
+        <form id="email-form">
+          <label class="field">
+            <span>E-Mail-Adresse</span>
+            <input id="email-input" type="email" autocomplete="email" placeholder="du@beispiel.de" required>
+          </label>
+          <p class="field-hint">Du erhältst einen sicheren Anmeldecode per E-Mail. Kein öffentliches Gästeverzeichnis, keine Restaurantkennung und kein gemeinsames Passwort.</p>
+          <p class="form-error" id="email-message" role="alert"></p>
+          <button class="primary full" type="submit">Code senden</button>
+        </form>
+
+        <form id="code-form" hidden>
+          <label class="field">
+            <span>Code aus der E-Mail</span>
+            <input id="code-input" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-stelliger Code" required>
+          </label>
+          <p class="field-hint">Wir haben dir einen Code an deine E-Mail-Adresse geschickt.</p>
+          <p class="form-error" id="code-message" role="alert"></p>
+          <button class="primary full" type="submit">Anmelden</button>
+          <button class="secondary full" type="button" id="code-resend-button" style="margin-top:10px">Code erneut senden</button>
+          <button class="secondary full" type="button" id="use-other-email" style="margin-top:10px">Andere E-Mail-Adresse verwenden</button>
+        </form>
+
+        <div class="divider">oder</div>
+        <button class="secondary full" type="button" id="show-account-creation">Konto erstellen</button>
+
+        <form id="token-form" class="hidden" style="display:none">
+          <input id="token-input" type="text" autocomplete="off">
+          <p class="form-error" id="message" role="alert"></p>
+          <button type="submit">Öffnen</button>
+        </form>
+      </div>
+
+      <div id="signup-views" hidden>
+        <div class="auth-heading">
+          <p class="eyebrow">Haviko Gastportal</p>
+          <h2>Konto erstellen</h2>
+          <p>Dauert weniger als eine Minute.</p>
+        </div>
+        <div class="auth-steps" aria-hidden="true"><span id="signup-step-dot-1" class="active"></span><span id="signup-step-dot-2"></span><span id="signup-step-dot-3"></span></div>
+
+        <form id="signup-email-form">
+          <label class="field">
+            <span>E-Mail-Adresse</span>
+            <input id="signup-email-input" type="email" autocomplete="email" placeholder="du@beispiel.de" required>
+          </label>
+          <p class="field-hint">Diese E-Mail-Adresse ist evtl. bereits für ein Haviko-Restaurantkonto hinterlegt — für das Gastportal kann sie trotzdem nur einmal genutzt werden.</p>
+          <p class="form-error" id="signup-email-message" role="alert"></p>
+          <button class="primary full" type="submit">Weiter</button>
+          <button class="secondary full" type="button" id="signup-back-to-login" style="margin-top:10px">Zurück zur Anmeldung</button>
+        </form>
+
+        <form id="signup-code-form" hidden>
+          <label class="field">
+            <span>Code aus der E-Mail</span>
+            <input id="signup-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="6-stelliger Code" required>
+          </label>
+          <p class="form-error" id="signup-code-message" role="alert"></p>
+          <button class="primary full" type="submit">Bestätigen</button>
+          <button class="secondary full" type="button" id="signup-code-resend-button" style="margin-top:10px">Code erneut senden</button>
+        </form>
+
+        <form id="signup-profile-form" hidden>
+          <label class="field">
+            <span>Name</span>
+            <input id="signup-name" type="text" autocomplete="name" required>
+          </label>
+          <label class="field">
+            <span>Telefon</span>
+            <div class="phone-field">
+              <select id="signup-phone-country" aria-label="Ländervorwahl"></select>
+              <input id="signup-phone" type="tel" autocomplete="tel-national" required>
+            </div>
+          </label>
+          <label class="field">
+            <span>Straße (optional)</span>
+            <input id="signup-street" type="text" autocomplete="address-line1">
+          </label>
+          <div class="field-grid">
+            <label class="field">
+              <span>Hausnummer (optional)</span>
+              <input id="signup-house-number" type="text">
+            </label>
+            <label class="field">
+              <span>Postleitzahl (optional)</span>
+              <input id="signup-postal-code" type="text" autocomplete="postal-code">
+            </label>
+          </div>
+          <label class="field">
+            <span>Ort (optional)</span>
+            <input id="signup-city" type="text" autocomplete="address-level2">
+          </label>
+          <label class="field">
+            <span>Allergien &amp; Ernährung (optional)</span>
+            <textarea id="signup-dietary" rows="2" placeholder="z. B. Nussallergie, vegetarisch …"></textarea>
+          </label>
+          <p class="form-error" id="signup-profile-message" role="alert"></p>
+          <button class="primary full" type="submit">Fertig</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <main class="shell">
+    <div id="maintenance-banner" class="maintenance-banner" hidden></div>
+    <div id="incident-banner" class="incident-banner" hidden></div>
+    <div id="offline-banner" class="offline-banner" hidden>Offline – Änderungen sind erst wieder online möglich.</div>
+
+    <div id="portal-topbar" class="portal-topbar" hidden>
+      <span class="portal-topbar-title">Gastportal</span>
+      <div class="portal-topbar-actions">
+        <button id="open-notifications" class="icon-button" type="button" aria-label="Mitteilungen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="notif-badge" class="notif-badge" hidden>0</span></button>
+        <button id="open-wallet" class="icon-button" type="button" aria-label="Dein QR-Code">▦</button>
+      </div>
+    </div>
+
+    <nav id="portal-tabs" class="portal-tabs" hidden>
+      <button class="tab-btn active" type="button" data-tab="start">Start</button>
+      <button class="tab-btn" type="button" data-tab="map">Karte</button>
+      <button class="tab-btn" type="button" data-tab="profile">Profil</button>
+    </nav>
+    <section id="receipt" class="receipt card" aria-live="polite"></section>
+    <section id="guest-overview" class="receipt card" aria-live="polite"></section>
+    <section id="guest-profile" class="receipt card" aria-live="polite"></section>
+    <section id="guest-page" class="receipt card" aria-live="polite"></section>
+    <section id="guest-map" class="receipt card" aria-live="polite">
+      <div class="map-header">
+        <h2>Restaurants in deiner Nähe</h2>
+      </div>
+      <div class="map-filters" id="map-filters">
+        <button class="map-filter-btn active" type="button" data-map-filter="all">Alle</button>
+        <button class="map-filter-btn" type="button" data-map-filter="mine">Nur Haviko</button>
+        <button class="map-filter-btn" type="button" data-map-filter="open">Geöffnet</button>
+        <button class="map-filter-btn" type="button" data-map-filter="restaurant">Restaurant</button>
+        <button class="map-filter-btn" type="button" data-map-filter="cafe">Café</button>
+        <button class="map-filter-btn" type="button" data-map-filter="bar">Bar</button>
+        <button class="map-filter-btn" type="button" data-map-filter="bakery">Bäckerei</button>
+        <button class="map-filter-btn" type="button" data-map-filter="fast_food">Imbiss</button>
+      </div>
+      <div id="leaflet-map"></div>
+      <div class="map-legend">
+        <span><i style="background:#087966"></i>Deine Restaurants</span>
+        <span><i style="background:#2f6fed"></i>Andere Haviko-Restaurants</span>
+        <span><i style="background:#9caaa5"></i>Noch nicht auf Haviko</span>
+      </div>
+    </section>
+    <section id="table-view" class="receipt card" aria-live="polite"></section>
+
+    <dialog id="review-dialog" class="review-dialog" aria-labelledby="review-dialog-title">
+      <div class="review-dialog-shell">
+        <div class="review-dialog-header">
+          <h2 id="review-dialog-title">Bewertungen</h2>
+          <button class="icon-button" id="close-review-dialog" type="button" aria-label="Bewertungen schließen">×</button>
+        </div>
+        <div id="review-dialog-content" class="review-dialog-content" aria-live="polite"></div>
+      </div>
+    </dialog>
+
+    <dialog id="report-dialog" class="review-dialog" aria-labelledby="report-dialog-title">
+      <div class="review-dialog-shell">
+        <div class="review-dialog-header">
+          <h2 id="report-dialog-title">Restaurant melden</h2>
+          <button class="icon-button" id="close-report-dialog" type="button" aria-label="Schließen">×</button>
+        </div>
+        <div id="report-dialog-content" class="review-dialog-content" aria-live="polite" style="padding:20px;"></div>
+      </div>
+    </dialog>
+
+    <dialog id="legal-consent-dialog" class="review-dialog" aria-labelledby="legal-consent-title">
+      <div class="review-dialog-shell">
+        <div class="review-dialog-header">
+          <h2 id="legal-consent-title">Aktualisierte Bedingungen</h2>
+        </div>
+        <div id="legal-consent-content" class="review-dialog-content" style="padding:20px;">
+          <p>Haviko hat die Datenschutzerklärung und/oder die Nutzungsbedingungen aktualisiert. Bitte lies sie dir durch und stimme erneut zu, um das Gastportal weiter zu nutzen.</p>
+          <p style="display:flex; gap:16px; margin:12px 0;">
+            <a href="https://haviko.de/datenschutz/" target="_blank" rel="noopener">Datenschutzerklärung</a>
+            <a href="https://haviko.de/nutzungsbedingungen/" target="_blank" rel="noopener">Nutzungsbedingungen</a>
+          </p>
+          <p id="legal-consent-error" class="form-error" hidden></p>
+          <button id="legal-consent-accept" type="button" class="primary full">Ich stimme zu</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="chat-dialog" class="chat-dialog" aria-labelledby="chat-dialog-title">
+      <div class="chat-shell">
+        <div class="chat-header">
+          <h2 id="chat-dialog-title">Haviki</h2>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button class="chat-menu-btn" id="chat-clear" type="button">Verlauf löschen</button>
+            <button class="icon-button" id="close-chat-dialog" type="button" aria-label="Chat schließen">×</button>
+          </div>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form">
+          <input id="chat-input" type="text" placeholder="Frag Haviki…" autocomplete="off">
+          <button type="submit">Senden</button>
+        </form>
+      </div>
+    </dialog>
+
+    <button id="chat-fab" class="chat-fab" type="button" hidden><span class="dot"></span>Haviki</button>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span class="footer-brand"><strong>Haviko</strong> Gastportal</span>
+        <div class="footer-links">
+          <a href="https://haviko.de/datenschutz">Datenschutz</a>
+          <a href="https://haviko.de/impressum">Impressum</a>
+          <a href="https://support.haviko.de/">Support</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+  <script>
+  "use strict";
+
+  // ==========================================================================
+  // Config
+  // ==========================================================================
+  const SUPABASE_URL = "https://dlapwemckfhxklytbqkk.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_VeeQLARNn-sULZ4snvp3HA_Hd78H5RN";
+  const SESSION_KEY = "haviko_gastportal_session";
+  const GASTPORTAL_URL = "https://gastportal.haviko.de/";
+  const LAST_SEEN_KEY = "haviko_gastportal_last_seen_notifications";
+  const CHAT_HISTORY_KEY = "haviko_gastportal_chat_history";
+  const RESEND_COOLDOWN_SECONDS = 30;
+
+  const PHONE_COUNTRIES = [
+    ["Deutschland", "+49"], ["Österreich", "+43"], ["Schweiz", "+41"], ["Frankreich", "+33"],
+    ["Italien", "+39"], ["Spanien", "+34"], ["Niederlande", "+31"], ["Belgien", "+32"],
+    ["Polen", "+48"], ["Vereinigtes Königreich", "+44"], ["USA/Kanada", "+1"], ["Türkei", "+90"],
+    ["Portugal", "+351"], ["Dänemark", "+45"], ["Schweden", "+46"], ["Norwegen", "+47"],
+    ["Griechenland", "+30"], ["Kroatien", "+385"], ["Tschechien", "+420"], ["Ungarn", "+36"]
+  ];
+
+  const money = new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" });
+  const dateTime = new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" });
+  const statusLabels = {
+    pending: "Angefragt",
+    expected: "Bestätigt",
+    seated: "Vor Ort",
+    completed: "Abgeschlossen",
+    cancelled: "Storniert",
+    no_show: "Nicht erschienen",
+    waitlisted: "Warteliste"
+  };
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>'\"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" }[char]));
+  }
+
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function timeOfDayGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Guten Morgen";
+    if (hour < 18) return "Guten Tag";
+    return "Guten Abend";
+  }
+
+  // ==========================================================================
+  // Session storage
+  // ==========================================================================
+  const Session = {
+    save(accessToken, refreshToken) {
+      try {
+        localStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken, refreshToken }));
+      } catch {}
+    },
+    read() {
+      try {
+        return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      } catch {
+        return null;
+      }
+    },
+    clear() {
+      try {
+        localStorage.removeItem(SESSION_KEY);
+      } catch {}
+    }
+  };
+
+  // ==========================================================================
+  // Api - single place all Supabase network calls go through. Every
+  // authenticated call gets the same 401-refresh-and-retry behaviour, so a
+  // guest never has to re-login just because their access token happened to
+  // expire while they were filling out a form.
+  // ==========================================================================
+  const Api = {
+    async refreshSession(refreshToken) {
+      if (!refreshToken) return null;
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken })
+      });
+      if (!response.ok) return null;
+      const result = await response.json();
+      if (!result.access_token) return null;
+      return result;
+    },
+
+    // Public (anon-key) RPC call - no session required.
+    async rpcPublic(name, body = {}) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || payload.hint || "Die Anfrage konnte nicht abgeschlossen werden.");
+      }
+      if (response.status === 204) return null;
+      return response.json().catch(() => null);
+    },
+
+    // Authenticated request (RPC or arbitrary REST path) with automatic
+    // refresh-and-retry on an expired access token.
+    async authed(path, body = {}) {
+      let session = Session.read();
+      if (!session?.accessToken) throw new Error("Bitte melde dich erneut an.");
+
+      const perform = token => fetch(`${SUPABASE_URL}${path}`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      let response = await perform(session.accessToken);
+      if (response.status === 401 && session.refreshToken) {
+        const refreshed = await this.refreshSession(session.refreshToken);
+        if (!refreshed?.access_token) {
+          Session.clear();
+          throw new Error("Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.");
+        }
+        session = {
+          accessToken: refreshed.access_token,
+          refreshToken: refreshed.refresh_token || session.refreshToken
+        };
+        Session.save(session.accessToken, session.refreshToken);
+        response = await perform(session.accessToken);
+      }
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || payload.hint || "Die Aktion konnte gerade nicht abgeschlossen werden.");
+      }
+      if (response.status === 204) return null;
+      return response.json().catch(() => null);
+    },
+
+    rpc(name, body = {}) {
+      return this.authed(`/rest/v1/rpc/${name}`, body);
+    },
+
+    async invokeFunction(name, body = {}) {
+      const session = Session.read();
+      if (!session?.accessToken) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      return response;
+    },
+
+    async sendEmailCode(email) {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ email, create_user: true, options: { emailRedirectTo: GASTPORTAL_URL } })
+      });
+      if (!response.ok) throw new Error("Der Code konnte gerade nicht gesendet werden.");
+    },
+
+    async verifyEmailCode(email, code) {
+      const response = await fetch(`${SUPABASE_URL}/auth/v1/verify`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "email", email, token: code })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.access_token) {
+        throw new Error("Der Code ist ungültig oder abgelaufen. Bitte fordere einen neuen an.");
+      }
+      return result;
+    },
+
+    async overviewWithToken(accessToken) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      if (!response.ok) return null;
+      return response.json().catch(() => null);
+    }
+  };
+
+  // ==========================================================================
+  // Application state
+  // ==========================================================================
+  const state = {
+    overview: null,
+    notifications: [],
+    detailRestaurantID: null,
+    activeTab: "start",
+    map: { loaded: false, instance: null, filter: "all", markers: [], discovered: [] },
+    reviews: { restaurant: null, list: [], summary: null, sort: "recent", filter: "all", typewriterTimer: null },
+    pendingEmail: "",
+    signup: { email: "", accessToken: "", refreshToken: "" },
+    chat: { history: [], sending: false, controller: null },
+    startSection: { cancelledExpanded: false, upcomingExpanded: false, pastExpanded: false }
+  };
+
+  function overviewRestaurants() {
+    return Array.isArray(state.overview?.restaurants) ? state.overview.restaurants : [];
+  }
+
+  function overviewReservations() {
+    return Array.isArray(state.overview?.reservations) ? state.overview.reservations : [];
+  }
+
+  function overviewReceipts() {
+    return Array.isArray(state.overview?.receipts) ? state.overview.receipts : [];
+  }
+
+  function restaurantByID(restaurantID) {
+    return overviewRestaurants().find(item => item.restaurantID === restaurantID) || null;
+  }
+
+  function fillPhoneCountrySelect(select) {
+    if (!select || select.dataset.filled) return;
+    select.dataset.filled = "1";
+    select.innerHTML = PHONE_COUNTRIES.map(([name, code]) => `<option value="${code}">${escapeHTML(name)} (${code})</option>`).join("");
+    select.value = "+49";
+  }
+
+  // ==========================================================================
+  // Resend-code cooldown helper, shared by login and signup code forms.
+  // ==========================================================================
+  function bindResendCooldown(buttonID, onResend) {
+    const button = $(buttonID);
+    if (!button) return;
+    let remaining = 0;
+    let timer = null;
+    const render = () => {
+      if (remaining > 0) {
+        button.disabled = true;
+        button.textContent = `Code erneut senden (${remaining}s)`;
+      } else {
+        button.disabled = false;
+        button.textContent = "Code erneut senden";
+        clearInterval(timer);
+      }
+    };
+    button.addEventListener("click", async () => {
+      if (button.disabled) return;
+      try {
+        await onResend();
+        remaining = RESEND_COOLDOWN_SECONDS;
+        render();
+        timer = setInterval(() => {
+          remaining -= 1;
+          render();
+          if (remaining <= 0) clearInterval(timer);
+        }, 1000);
+      } catch {}
+    });
+  }
+
+  // ==========================================================================
+  // Deep-link views: digital receipt and table QR page. These are
+  // self-contained, unauthenticated views separate from the guest-account
+  // tabs below.
+  // ==========================================================================
+  async function loadReceipt(token) {
+    const el = $("receipt");
+    $("landing").hidden = true;
+    el.classList.add("visible");
+    el.innerHTML = '<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Wird geladen…</h1></div></header>';
+    try {
+      const receipt = await Api.rpcPublic("get_public_receipt", { p_token: token });
+      if (!receipt || !receipt.invoiceNumber) throw new Error("Dieser persönliche Rechnungslink ist nicht mehr verfügbar.");
+      const items = Array.isArray(receipt.items) ? receipt.items : [];
+      const rows = items.map(item => {
+        const quantity = Number(item.quantity ?? item.count ?? 1);
+        const title = escapeHTML(item.name ?? item.productName ?? "Position");
+        const amount = Number(item.grossAmount ?? item.price ?? item.total ?? 0);
+        return `<li><span>${quantity}× ${title}</span><strong>${money.format(amount)}</strong></li>`;
+      }).join("") || '<li><span>Keine Positionen hinterlegt</span></li>';
+      const tip = /^https:\/\//i.test(receipt.tipLinkURL || "")
+        ? `<div class="receipt-actions"><a href="${escapeHTML(receipt.tipLinkURL)}" target="_blank" rel="noopener">Trinkgeld geben</a></div>` : "";
+      el.innerHTML = `
+        <header><div><p class="eyebrow">Digitale Rechnung</p><h1>${escapeHTML(receipt.restaurantName || "Haviko Restaurant")}</h1></div><a class="link" href="${GASTPORTAL_URL}">Schließen</a></header>
+        <div class="receipt-meta"><span>Rechnung ${escapeHTML(receipt.invoiceNumber)}</span><span>${escapeHTML(receipt.sourceName || "Direktverkauf")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</span><span>${escapeHTML(receipt.paymentMethodName || "Zahlung")}</span></div>
+        <ul class="receipt-items">${rows}</ul>
+        <div class="receipt-total"><span>Gesamt</span><span>${money.format(Number(receipt.grossAmount || 0))}</span></div>${tip}`;
+    } catch (error) {
+      el.innerHTML = `<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Nicht verfügbar</h1></div><a class="link" href="${GASTPORTAL_URL}">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Link konnte nicht geöffnet werden.")}</div>`;
+    }
+  }
+
+  function buildRestaurantInfoParts(restaurant) {
+    const info = [];
+    if (restaurant.address) info.push(`<div><strong>Adresse</strong>${escapeHTML(restaurant.address)}</div>`);
+    if (restaurant.openingHoursText) info.push(`<div><strong>Öffnungszeiten</strong>${escapeHTML(restaurant.openingHoursText)}</div>`);
+    if (restaurant.phone) info.push(`<div><strong>Telefon</strong><a href="tel:${encodeURIComponent(restaurant.phone)}">${escapeHTML(restaurant.phone)}</a></div>`);
+    if (restaurant.email) info.push(`<div><strong>E-Mail</strong><a href="mailto:${encodeURIComponent(restaurant.email)}">${escapeHTML(restaurant.email)}</a></div>`);
+    return info;
+  }
+
+  function renderMenuHTML(menu) {
+    const byCategory = new Map();
+    menu.forEach(item => {
+      const list = byCategory.get(item.category) || [];
+      list.push(item);
+      byCategory.set(item.category, list);
+    });
+    const formatPrice = value => money.format(Number(value || 0));
+    return [...byCategory.entries()].map(([category, items]) => `
+      <div class="menu-category">
+        <h3 class="menu-category-title">${escapeHTML(category || "Speisen")}</h3>
+        <div class="menu-items">
+          ${items.map(item => `
+            <div class="menu-item">
+              <span class="menu-item-name">${escapeHTML(item.name)}</span>
+              <span class="menu-item-dots"></span>
+              <span class="menu-item-price">${formatPrice(item.price)}</span>
+            </div>`).join("")}
+        </div>
+      </div>`).join("");
+  }
+
+  async function loadTableView(publicIDValue, tableIDValue) {
+    const el = $("table-view");
+    $("landing").hidden = true;
+    el.classList.add("visible");
+    el.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Wird geladen…</h1></div></header>';
+    try {
+      const snapshot = await Api.rpcPublic("get_public_booking_snapshot", { p_public_id: publicIDValue });
+      const table = (snapshot?.tables || []).find(item => item.id === tableIDValue);
+      const restaurant = snapshot?.restaurant || {};
+      const settings = restaurant.settings || {};
+      const showInfo = settings.tableQRShowsRestaurantInfo !== false;
+      const showMenu = settings.tableQRShowsMenu !== false;
+      const infoParts = showInfo ? buildRestaurantInfoParts(restaurant) : [];
+      const menu = showMenu ? (snapshot?.menu || []) : [];
+      el.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div></header>
+        <div class="receipt-meta"><strong>${escapeHTML(table ? table.name : "Tisch")}</strong></div>
+        ${infoParts.length ? `<div class="table-info-grid">${infoParts.join("")}</div>` : ""}
+        ${showMenu ? (menu.length ? `<div class="receipt-meta"><strong>Speisekarte</strong></div><div class="menu-list">${renderMenuHTML(menu)}</div>` : `<div class="receipt-meta">Die Speisekarte ist online noch nicht verfügbar.</div>`) : ""}`;
+    } catch (error) {
+      el.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Nicht verfügbar</h1></div></header><div class="receipt-meta">${escapeHTML(error.message || "Dieser Tisch-Link konnte nicht geöffnet werden.")}</div>`;
+    }
+  }
+
+  // ==========================================================================
+  // Login (email + one-time code)
+  // ==========================================================================
+  function showEmailMessage(text, isSuccess) {
+    const el = $("email-message");
+    el.textContent = text;
+    el.classList.add("visible");
+    el.classList.toggle("success", Boolean(isSuccess));
+  }
+
+  $("email-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = $("email-input").value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return showEmailMessage("Bitte gib eine gültige E-Mail-Adresse ein.");
+    try {
+      await Api.sendEmailCode(email);
+      state.pendingEmail = email;
+      $("email-form").hidden = true;
+      $("code-form").hidden = false;
+      $("code-input").focus();
+    } catch (error) {
+      showEmailMessage(error.message || "Der Code konnte nicht gesendet werden.", false);
+    }
+  });
+
+  $("use-other-email").addEventListener("click", () => {
+    $("code-form").hidden = true;
+    $("email-form").hidden = false;
+    $("code-input").value = "";
+    const codeMessage = $("code-message");
+    codeMessage.textContent = "";
+    codeMessage.classList.remove("visible");
+  });
+
+  bindResendCooldown("code-resend-button", () => Api.sendEmailCode(state.pendingEmail));
+
+  $("code-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const codeMessage = $("code-message");
+    codeMessage.classList.remove("visible");
+    const code = $("code-input").value.trim();
+    if (!code) return;
+    const submitButton = event.target.querySelector("button[type=submit]");
+    submitButton.disabled = true;
+    submitButton.textContent = "Wird geprüft …";
+    try {
+      const result = await Api.verifyEmailCode(state.pendingEmail, code);
+      await loadGuestOverview(result.access_token, result.refresh_token);
+    } catch (error) {
+      codeMessage.textContent = error.message || "Die Anmeldung ist fehlgeschlagen.";
+      codeMessage.classList.add("visible");
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Anmelden";
+    }
+  });
+
+  function tokenFrom(value) {
+    const trimmed = value.trim();
+    if (!trimmed) return "";
+    try {
+      const url = new URL(trimmed);
+      return url.searchParams.get("receipt") || "";
+    } catch (_) {
+      return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(trimmed) ? trimmed : "";
+    }
+  }
+
+  $("token-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const token = tokenFrom($("token-input").value);
+    if (!token) {
+      const el = $("message");
+      el.textContent = "Bitte füge den vollständigen persönlichen Link oder einen gültigen Rechnungs-Code ein.";
+      el.classList.add("visible");
+      return;
+    }
+    history.replaceState({}, "", `?receipt=${encodeURIComponent(token)}`);
+    loadReceipt(token);
+  });
+
+  function logout() {
+    Session.clear();
+    window.location.href = GASTPORTAL_URL;
+  }
+
+  // ==========================================================================
+  // Account creation (signup): email -> code -> optional profile, with a
+  // duplicate-account check right after the code is verified.
+  // ==========================================================================
+  function showSignupStep(step) {
+    $("signup-email-form").hidden = step !== 1;
+    $("signup-code-form").hidden = step !== 2;
+    $("signup-profile-form").hidden = step !== 3;
+    [1, 2, 3].forEach(n => {
+      const dot = $(`signup-step-dot-${n}`);
+      dot.classList.toggle("active", n === step);
+      dot.classList.toggle("done", n < step);
+    });
+  }
+
+  $("show-account-creation").addEventListener("click", () => {
+    $("login-views").hidden = true;
+    $("signup-views").hidden = false;
+    showSignupStep(1);
+    fillPhoneCountrySelect($("signup-phone-country"));
+  });
+
+  $("signup-back-to-login").addEventListener("click", () => {
+    $("signup-views").hidden = true;
+    $("login-views").hidden = false;
+  });
+
+  function showSignupMessage(id, text, isSuccess) {
+    const el = $(id);
+    el.textContent = text;
+    el.classList.add("visible");
+    el.classList.toggle("success", Boolean(isSuccess));
+  }
+
+  $("signup-email-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const email = $("signup-email-input").value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return showSignupMessage("signup-email-message", "Bitte gib eine gültige E-Mail-Adresse ein.");
+    const submitButton = event.target.querySelector("button[type=submit]");
+    submitButton.disabled = true;
+    try {
+      await Api.sendEmailCode(email);
+      state.signup.email = email;
+      showSignupStep(2);
+      $("signup-code-input").focus();
+    } catch (error) {
+      showSignupMessage("signup-email-message", error.message || "Der Code konnte nicht gesendet werden.", false);
+    } finally {
+      submitButton.disabled = false;
+    }
+  });
+
+  bindResendCooldown("signup-code-resend-button", () => Api.sendEmailCode(state.signup.email));
+
+  $("signup-code-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const messageEl = $("signup-code-message");
+    messageEl.classList.remove("visible");
+    const code = $("signup-code-input").value.trim();
+    if (!code) return;
+    const submitButton = event.target.querySelector("button[type=submit]");
+    submitButton.disabled = true;
+    submitButton.textContent = "Wird geprüft …";
+    try {
+      const result = await Api.verifyEmailCode(state.signup.email, code);
+      const existingOverview = await Api.overviewWithToken(result.access_token);
+      const hasExistingAccount = Boolean(
+        existingOverview?.profile?.displayName ||
+        (existingOverview?.restaurants || []).length ||
+        (existingOverview?.reservations || []).length ||
+        (existingOverview?.receipts || []).length
+      );
+      if (hasExistingAccount) {
+        showSignupMessage("signup-code-message", "Für diese E-Mail-Adresse existiert bereits ein Gastportal-Konto. Bitte melde dich stattdessen an.", false);
+        showSignupStep(1);
+        $("signup-code-input").value = "";
+        return;
+      }
+      state.signup.accessToken = result.access_token;
+      state.signup.refreshToken = result.refresh_token;
+      showSignupStep(3);
+      $("signup-name").focus();
+    } catch (error) {
+      messageEl.textContent = error.message || "Der Code ist ungültig oder abgelaufen.";
+      messageEl.classList.add("visible");
+    } finally {
+      submitButton.disabled = false;
+      submitButton.textContent = "Bestätigen";
+    }
+  });
+
+  $("signup-profile-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    const messageEl = $("signup-profile-message");
+    messageEl.classList.remove("visible");
+    const name = $("signup-name").value.trim();
+    const phoneLocal = $("signup-phone").value.trim();
+    if (!name) return showSignupMessage("signup-profile-message", "Bitte gib deinen Namen an.");
+    if (!phoneLocal) return showSignupMessage("signup-profile-message", "Bitte gib deine Telefonnummer an.");
+    const submitButton = event.target.querySelector("button[type=submit]");
+    submitButton.disabled = true;
+    try {
+      Session.save(state.signup.accessToken, state.signup.refreshToken);
+      await Api.rpc("update_my_guest_account", {
+        p_display_name: name,
+        p_phone: `${$("signup-phone-country").value} ${phoneLocal}`,
+        p_street: $("signup-street").value,
+        p_house_number: $("signup-house-number").value,
+        p_postal_code: $("signup-postal-code").value,
+        p_city: $("signup-city").value,
+        p_dietary_notes: $("signup-dietary").value
+      });
+      await loadGuestOverview(state.signup.accessToken, state.signup.refreshToken);
+    } catch (error) {
+      showSignupMessage("signup-profile-message", error.message || "Dein Profil konnte nicht gespeichert werden.");
+      submitButton.disabled = false;
+    }
+  });
+
+  // ==========================================================================
+  // Guest overview loading
+  // ==========================================================================
+  async function guestPortalErrorMessage(response) {
+    const payload = await response.json().catch(() => ({}));
+    const detail = String(payload.message || payload.hint || payload.details || "");
+    const functionMissing = response.status === 404 ||
+      payload.code === "PGRST202" ||
+      /get_my_guest_portal_overview|get_guest_portal_visibility/i.test(detail);
+    if (functionMissing) {
+      return "Das Gastportal wird gerade eingerichtet. Die aktuelle Gastportal-Migration muss noch in Supabase ausgeführt werden.";
+    }
+    if (response.status === 401 || response.status === 403) {
+      return "Deine Anmeldung konnte nicht geprüft werden. Bitte fordere einen neuen Anmeldelink an.";
+    }
+    return "Dein Profil konnte gerade nicht geladen werden. Bitte versuche es in einem Moment erneut.";
+  }
+
+  function renderGuestPortalError(text) {
+    $("guest-overview").innerHTML = `
+      <header><div><p class="eyebrow">Gastportal</p><h1>Profil vorübergehend nicht verfügbar</h1></div></header>
+      <div class="receipt-meta">${escapeHTML(text)}</div>
+      <div class="receipt-actions"><button type="button" id="retry-overview">Erneut versuchen</button></div>`;
+    $("retry-overview").addEventListener("click", () => {
+      const session = Session.read();
+      if (session?.accessToken) loadGuestOverview(session.accessToken, session.refreshToken);
+    });
+  }
+
+  async function loadGuestOverview(accessToken, refreshToken) {
+    const el = $("guest-overview");
+    $("landing").hidden = true;
+    el.classList.add("visible");
+    el.innerHTML = '<header><div><p class="eyebrow">Gastportal</p><h1>Dein Profil wird geladen…</h1></div></header>';
+    try {
+      Session.save(accessToken, refreshToken);
+      let response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: "{}"
+      });
+      if (response.status === 401 && refreshToken) {
+        const refreshed = await Api.refreshSession(refreshToken);
+        if (!refreshed) throw new Error("Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an.");
+        accessToken = refreshed.access_token;
+        refreshToken = refreshed.refresh_token || refreshToken;
+        Session.save(accessToken, refreshToken);
+        response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_my_guest_portal_overview`, {
+          method: "POST",
+          headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: "{}"
+        });
+      }
+      if (!response.ok) throw new Error(await guestPortalErrorMessage(response));
+      Session.save(accessToken, refreshToken);
+      state.overview = await response.json();
+      try {
+        state.notifications = await Api.rpc("list_my_guest_notifications");
+      } catch {
+        state.notifications = [];
+      }
+      $("portal-tabs").hidden = false;
+      $("portal-topbar").hidden = false;
+      $("chat-fab").hidden = false;
+      setActiveTab("start");
+      updateNotificationBadge();
+      loadSystemStatus();
+      checkGuestLegalConsent();
+    } catch (error) {
+      if (error.message && error.message.includes("abgelaufen")) Session.clear();
+      renderGuestPortalError(error.message || "Der Gastzugang konnte nicht geöffnet werden.");
+    }
+  }
+
+  // ==========================================================================
+  // Maintenance / incident / offline banners
+  // ==========================================================================
+  async function loadSystemStatus() {
+    try {
+      const status = await Api.rpc("get_system_status");
+      const maintenanceEl = $("maintenance-banner");
+      const incidentEl = $("incident-banner");
+      if (status?.maintenance_mode) {
+        maintenanceEl.textContent = status.maintenance_message || "Haviko führt gerade Wartungsarbeiten durch. Einige Funktionen können vorübergehend eingeschränkt sein.";
+        maintenanceEl.hidden = false;
+        incidentEl.hidden = true;
+        return;
+      }
+      maintenanceEl.hidden = true;
+      const component = (status?.components || []).find(item => item.slug === "guest_portal");
+      const message = status?.globalIncidentMessage || (component && !component.isOperational ? component.note : "");
+      if (message) {
+        incidentEl.innerHTML = `<span>${escapeHTML(message)}</span><button class="banner-dismiss" type="button" aria-label="Ausblenden">×</button>`;
+        incidentEl.hidden = false;
+        incidentEl.querySelector(".banner-dismiss").addEventListener("click", () => { incidentEl.hidden = true; });
+      } else {
+        incidentEl.hidden = true;
+      }
+    } catch {}
+  }
+
+  function updateOfflineBanner() {
+    $("offline-banner").hidden = navigator.onLine;
+  }
+  window.addEventListener("online", updateOfflineBanner);
+  window.addEventListener("offline", updateOfflineBanner);
+
+  // ==========================================================================
+  // Notifications: merge server notifications with locally-derived "smart"
+  // notifications (near-complete stamp card, cancelled/soon reservation,
+  // feedback request) - mirrors the app's combined notification feed.
+  // ==========================================================================
+  function lastSeenNotificationsAt() {
+    return Number(localStorage.getItem(LAST_SEEN_KEY) || 0);
+  }
+
+  function markNotificationsSeenNow() {
+    try { localStorage.setItem(LAST_SEEN_KEY, String(Date.now())); } catch {}
+  }
+
+  function computeSmartNotifications() {
+    const items = [];
+    const now = Date.now();
+    overviewRestaurants().forEach(restaurant => {
+      const loyalty = restaurant.loyalty;
+      if (loyalty && Number(loyalty.visitsRequired) > 0 && Number(loyalty.stampsIntoCurrentCard) === Number(loyalty.visitsRequired) - 1) {
+        items.push({
+          id: `stamp_${restaurant.restaurantID}`,
+          kind: "loyalty",
+          title: "Fast geschafft!",
+          message: `Noch 1 Besuch bis zu deiner Prämie bei ${restaurant.name || "diesem Restaurant"}.`,
+          restaurantID: restaurant.restaurantID,
+          createdAt: new Date(now).toISOString(),
+          server: false
+        });
+      }
+    });
+    overviewReservations().forEach(reservation => {
+      const restaurant = restaurantByID(reservation.restaurantID);
+      const restaurantName = restaurant?.name || reservation.restaurantName || "Restaurant";
+      const startsAt = reservation.startsAt ? new Date(reservation.startsAt).getTime() : 0;
+      if (reservation.status === "cancelled" && startsAt) {
+        items.push({
+          id: `cancelled_${reservation.reservationID}`,
+          kind: "cancelled",
+          title: "Reservierung storniert",
+          message: reservation.cancellationNote
+            ? `Deine Reservierung bei ${restaurantName} wurde storniert: ${reservation.cancellationNote}`
+            : `Deine Reservierung bei ${restaurantName} wurde storniert.`,
+          restaurantID: reservation.restaurantID,
+          createdAt: reservation.startsAt,
+          server: false
+        });
+      }
+      if (reservation.status !== "cancelled" && startsAt && startsAt > now && startsAt - now < 60 * 60 * 1000) {
+        items.push({
+          id: `soon_${reservation.reservationID}`,
+          kind: "soon",
+          title: "Reservierung bald",
+          message: `Deine Reservierung bei ${restaurantName} beginnt in weniger als einer Stunde.`,
+          restaurantID: reservation.restaurantID,
+          createdAt: new Date(now).toISOString(),
+          server: false
+        });
+      }
+      const daysSince = startsAt ? (now - startsAt) / 86400000 : 999;
+      if (reservation.status !== "cancelled" && startsAt && startsAt < now && daysSince <= 14) {
+        items.push({
+          id: `feedback_${reservation.reservationID}`,
+          kind: "feedback",
+          title: "Wie war dein Besuch?",
+          message: `Bewerte deinen Besuch bei ${restaurantName}.`,
+          restaurantID: reservation.restaurantID,
+          createdAt: reservation.startsAt,
+          server: false
+        });
+      }
+    });
+    (state.notifications || []).forEach(notification => {
+      items.push({
+        id: notification.id,
+        kind: notification.kind || "generic",
+        title: notification.title || "Neue Mitteilung",
+        message: notification.message || "",
+        restaurantID: notification.restaurant_id,
+        createdAt: notification.created_at || new Date(now).toISOString(),
+        server: true,
+        readAt: notification.read_at
+      });
+    });
+    return items.sort((left, right) => new Date(right.createdAt || 0) - new Date(left.createdAt || 0));
+  }
+
+  function updateNotificationBadge() {
+    const seenAt = lastSeenNotificationsAt();
+    const items = computeSmartNotifications();
+    const count = items.filter(item => item.server ? !item.readAt : new Date(item.createdAt || 0).getTime() > seenAt).length;
+    const badge = $("notif-badge");
+    if (count > 0) {
+      badge.textContent = String(Math.min(count, 99));
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  }
+
+  // ==========================================================================
+  // Tabs
+  // ==========================================================================
+  function hideAllSections() {
+    ["guest-overview", "guest-map", "guest-profile", "guest-page"].forEach(id => $(id).classList.remove("visible"));
+  }
+
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    document.querySelectorAll(".portal-tabs .tab-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.tab === tab);
+    });
+    hideAllSections();
+    $("guest-overview").classList.toggle("visible", tab === "start");
+    $("guest-map").classList.toggle("visible", tab === "map");
+    $("guest-profile").classList.toggle("visible", tab === "profile");
+    if (tab === "start") renderStartTab();
+    if (tab === "map") renderMapTab();
+    if (tab === "profile") renderProfileTab();
+  }
+
+  document.querySelectorAll(".portal-tabs .tab-btn").forEach(button => {
+    button.addEventListener("click", () => setActiveTab(button.dataset.tab));
+  });
+
+  function showGuestPage(html) {
+    hideAllSections();
+    const el = $("guest-page");
+    el.classList.add("visible");
+    el.innerHTML = html;
+    return el;
+  }
+
+  function backToTab(tab) {
+    setActiveTab(tab);
+  }
+
+  // ==========================================================================
+  // Restaurant badges: type/rating/price/open-status, shared by the Start
+  // tab cards, the map and the restaurant detail header.
+  // ==========================================================================
+  function restaurantTypeLabel(info) {
+    const text = String(info?.restaurantType || "").toLowerCase();
+    if (/caf(e|é)/.test(text)) return "Café";
+    if (/bar|pub/.test(text)) return "Bar";
+    if (/b[aä]cker/.test(text)) return "Bäckerei";
+    if (/imbiss|fast.?food|burger|d[oö]ner|kebab/.test(text)) return "Imbiss";
+    if (/pizza/.test(text)) return "Pizzeria";
+    return info?.restaurantType || "Restaurant";
+  }
+
+  function priceClassLabel(restaurant) {
+    let priceClass = Number(restaurant.info?.priceClass || 0);
+    if (!priceClass && Array.isArray(restaurant.menu) && restaurant.menu.length) {
+      const prices = restaurant.menu.map(item => Number(item.price || 0)).filter(value => value > 0);
+      const avg = prices.length ? prices.reduce((sum, value) => sum + value, 0) / prices.length : 0;
+      priceClass = avg < 10 ? 1 : avg < 18 ? 2 : avg < 32 ? 3 : 4;
+    }
+    return priceClass ? "€".repeat(Math.min(4, Math.max(1, priceClass))) : "";
+  }
+
+  function weekdayAvailability(dayAvailability, dateObj) {
+    if (!Array.isArray(dayAvailability) || !dayAvailability.length) return null;
+    const id = dateObj.getDay() + 1; // JS: 0=Sun..6=Sat -> app: 1=Sun..7=Sat
+    return dayAvailability.find(item => Number(item.id) === id) || null;
+  }
+
+  function openStatusPill(info) {
+    const day = weekdayAvailability(info?.dayAvailability, new Date());
+    if (!day || !day.isOpen || !Array.isArray(day.windows) || !day.windows.length) return "";
+    const now = new Date();
+    const minutesNow = now.getHours() * 60 + now.getMinutes();
+    const isOpen = day.windows.some(window => minutesNow >= Number(window.startMinutes) && minutesNow <= Number(window.endMinutes));
+    return `<span class="status-pill ${isOpen ? "open" : "closed"}">${isOpen ? "Geöffnet" : "Geschlossen"}</span>`;
+  }
+
+  function restaurantBadgesHTML(restaurant) {
+    const label = restaurantTypeLabel(restaurant.info);
+    const price = priceClassLabel(restaurant);
+    const ratingCount = Number(restaurant.ratingCount || 0);
+    const rating = ratingCount > 0 ? `<span class="rating-badge">★ ${Number(restaurant.ratingAverage || 0).toFixed(1)} (${ratingCount})</span>` : "";
+    const openPill = openStatusPill(restaurant.info);
+    const unavailablePill = restaurant.isActivated === false
+      ? `<span class="status-pill closed" title="${restaurant.suspensionReason ? "Gesperrt" : "Momentan nicht verfügbar"}">⚠ ${restaurant.suspensionReason ? "Gesperrt" : "Nicht verfügbar"}</span>`
+      : "";
+    return `<div class="card-badges"><span class="type-badge">${escapeHTML(label)}</span>${price ? `<span class="price-badge">${price}</span>` : ""}${rating}${unavailablePill || openPill}</div>`;
+  }
+
+  function timeRangeForReservationDate(restaurant, dateObj) {
+    const day = weekdayAvailability(restaurant?.info?.dayAvailability, dateObj);
+    if (!day || !day.isOpen || !Array.isArray(day.windows) || !day.windows.length) return { start: 8 * 60, end: 23 * 60 + 30 };
+    const starts = day.windows.map(window => Number(window.startMinutes));
+    const ends = day.windows.map(window => Number(window.endMinutes));
+    return { start: Math.min(...starts), end: Math.max(...ends) };
+  }
+
+  function minutesToTimeString(minutes) {
+    const hours = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const mins = String(minutes % 60).padStart(2, "0");
+    return `${hours}:${mins}`;
+  }
+
+  // ==========================================================================
+  // Reservation rows: shared between the Start tab lists and the restaurant
+  // detail view. Supports inline edit (date/time/guests/notes) and cancel.
+  // ==========================================================================
+  function reservationRowHTML(reservation, options = {}) {
+    const restaurant = restaurantByID(reservation.restaurantID);
+    const showRestaurantName = Boolean(options.showRestaurantName);
+    const isUpcoming = reservation.startsAt ? new Date(reservation.startsAt).getTime() > Date.now() : false;
+    const canEdit = isUpcoming && reservation.reservationID && reservation.status !== "cancelled";
+    const canCancel = canEdit && reservation.allowsCancellation;
+    const title = showRestaurantName ? (restaurant?.name || reservation.restaurantName || "Restaurant") : (reservation.confirmationCode || "Reservierung");
+    return `
+      <li>
+        <div style="width:100%">
+          <div class="restaurant-row" style="cursor:default; padding-bottom:4px;">
+            <span><strong>${escapeHTML(title)}</strong><br><small>${escapeHTML(reservation.startsAt ? dateTime.format(new Date(reservation.startsAt)) : "")} · ${Number(reservation.guests || 0)} Gäste${reservation.area ? ` · ${escapeHTML(reservation.area)}` : ""}</small></span>
+            <strong>${escapeHTML(statusLabels[reservation.status] || reservation.status || "")}</strong>
+          </div>
+          <div class="reservation-actions-row">
+            ${canEdit ? `<button class="text-button link" type="button" data-edit-reservation="${escapeHTML(reservation.reservationID)}">Bearbeiten</button>` : ""}
+            ${canCancel ? `<button class="text-button" type="button" data-cancel-reservation="${escapeHTML(reservation.reservationID)}" style="color:var(--orange);">Stornieren</button>` : ""}
+          </div>
+          ${reservation.status === "cancelled" && reservation.cancellationNote ? `<div class="field-hint">Grund: ${escapeHTML(reservation.cancellationNote)}</div>` : ""}
+          <div class="reservation-edit-slot" data-edit-slot="${escapeHTML(reservation.reservationID || "")}"></div>
+        </div>
+      </li>`;
+  }
+
+  function reservationEditFormHTML(reservation) {
+    const restaurant = restaurantByID(reservation.restaurantID);
+    const startDate = reservation.startsAt ? new Date(reservation.startsAt) : new Date();
+    const range = timeRangeForReservationDate(restaurant, startDate);
+    const maxGuests = Math.min(15, Math.max(Number(reservation.guests || 1) + 3, 5));
+    const dateValue = startDate.toISOString().slice(0, 10);
+    const timeValue = startDate.toTimeString().slice(0, 5);
+    return `
+      <form class="reservation-edit-form" data-edit-form="${escapeHTML(reservation.reservationID)}">
+        <div class="field-grid">
+          <label class="field"><span>Datum</span><input type="date" name="date" value="${dateValue}" required></label>
+          <label class="field"><span>Uhrzeit</span><input type="time" name="time" value="${timeValue}" min="${minutesToTimeString(range.start)}" max="${minutesToTimeString(range.end)}" step="900" required></label>
+        </div>
+        <label class="field"><span>Gäste</span>
+          <div class="stepper" data-guest-stepper>
+            <button type="button" data-step="-1">−</button>
+            <span data-guest-value>${Number(reservation.guests || 1)}</span>
+            <button type="button" data-step="1">+</button>
+          </div>
+        </label>
+        <input type="hidden" name="guests" value="${Number(reservation.guests || 1)}">
+        <label class="field"><span>Notiz</span><textarea name="notes" rows="2">${escapeHTML(reservation.notes || "")}</textarea></label>
+        <p class="form-error" data-edit-message role="alert"></p>
+        <div class="reservation-actions-row">
+          <button class="primary" type="submit">Änderungen speichern</button>
+          <button class="secondary" type="button" data-cancel-edit>Abbrechen</button>
+        </div>
+      </form>`;
+  }
+
+  function bindReservationRowActions(root, onChanged) {
+    root.querySelectorAll("[data-edit-reservation]").forEach(button => {
+      button.addEventListener("click", () => {
+        const reservationID = button.getAttribute("data-edit-reservation");
+        const reservation = overviewReservations().find(item => item.reservationID === reservationID);
+        const slot = root.querySelector(`[data-edit-slot="${reservationID}"]`);
+        if (!reservation || !slot) return;
+        if (slot.innerHTML) { slot.innerHTML = ""; return; }
+        slot.innerHTML = reservationEditFormHTML(reservation);
+        bindReservationEditForm(slot.querySelector("form"), reservation, slot, onChanged);
+      });
+    });
+    root.querySelectorAll("[data-cancel-reservation]").forEach(button => {
+      button.addEventListener("click", () => {
+        const reservationID = button.getAttribute("data-cancel-reservation");
+        if (!reservationID) return;
+        if (!confirm("Diese Reservierung wirklich stornieren? Das kann nicht rückgängig gemacht werden.")) return;
+        button.disabled = true;
+        cancelGuestReservation(reservationID, onChanged);
+      });
+    });
+  }
+
+  function bindReservationEditForm(form, reservation, slot, onChanged) {
+    if (!form) return;
+    const stepper = form.querySelector("[data-guest-stepper]");
+    const valueEl = stepper.querySelector("[data-guest-value]");
+    const hiddenGuests = form.querySelector('input[name="guests"]');
+    const maxGuests = Math.min(15, Math.max(Number(reservation.guests || 1) + 3, 5));
+    stepper.querySelectorAll("button[data-step]").forEach(stepButton => {
+      stepButton.addEventListener("click", () => {
+        const delta = Number(stepButton.getAttribute("data-step"));
+        const next = Math.min(maxGuests, Math.max(1, Number(valueEl.textContent) + delta));
+        valueEl.textContent = String(next);
+        hiddenGuests.value = String(next);
+      });
+    });
+    form.querySelector("[data-cancel-edit]").addEventListener("click", () => { slot.innerHTML = ""; });
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const messageEl = form.querySelector("[data-edit-message]");
+      messageEl.classList.remove("visible");
+      const date = form.date.value;
+      const time = form.time.value;
+      if (!date || !time) return;
+      const startsAt = new Date(`${date}T${time}:00`).toISOString();
+      const submitButton = form.querySelector("button[type=submit]");
+      submitButton.disabled = true;
+      try {
+        await Api.rpc("update_my_reservation", {
+          p_reservation_id: reservation.reservationID,
+          p_starts_at: startsAt,
+          p_guests: Number(hiddenGuests.value),
+          p_notes: form.notes.value
+        });
+        reservation.startsAt = startsAt;
+        reservation.guests = Number(hiddenGuests.value);
+        reservation.notes = form.notes.value;
+        slot.innerHTML = "";
+        if (onChanged) onChanged();
+      } catch (error) {
+        messageEl.textContent = error.message || "Die Änderungen konnten nicht gespeichert werden.";
+        messageEl.classList.add("visible");
+        submitButton.disabled = false;
+      }
+    });
+  }
+
+  async function cancelGuestReservation(reservationID, onChanged) {
+    if (!reservationID) return;
+    try {
+      await Api.rpc("cancel_my_reservation", { p_reservation_id: reservationID });
+      const reservation = overviewReservations().find(item => item.reservationID === reservationID);
+      if (reservation) reservation.status = "cancelled";
+      if (onChanged) onChanged();
+    } catch (error) {
+      alert(error.message || "Die Reservierung konnte nicht storniert werden.");
+    }
+  }
+
+  // ==========================================================================
+  // Start tab: search, notifications, receipts, restaurants (with badges +
+  // favorites), nearby Haviko restaurants and grouped reservation lists.
+  // ==========================================================================
+  async function toggleFavoriteRestaurant(restaurantID) {
+    if (!state.overview || !restaurantID) return;
+    try {
+      const isFavorite = await Api.rpc("toggle_my_guest_favorite_restaurant", { p_restaurant_id: restaurantID });
+      const restaurant = overviewRestaurants().find(item => item.restaurantID === restaurantID);
+      if (restaurant) restaurant.isFavorite = Boolean(isFavorite);
+      const nearby = (state.overview.nearbyRestaurants || []).find(item => item.restaurantID === restaurantID);
+      if (nearby) nearby.isFavorite = Boolean(isFavorite);
+      if (state.detailRestaurantID === restaurantID) {
+        renderRestaurantDetail(restaurantID);
+      } else if (state.activeTab === "start") {
+        renderStartTab();
+      } else if (state.activeTab === "profile") {
+        renderProfileTab();
+      }
+    } catch {}
+  }
+
+  function bindFavoriteButtons(root) {
+    root.querySelectorAll("[data-favorite-toggle]").forEach(button => {
+      button.addEventListener("click", async event => {
+        event.stopPropagation();
+        const restaurantID = button.getAttribute("data-favorite-toggle");
+        button.disabled = true;
+        try {
+          await toggleFavoriteRestaurant(restaurantID);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  }
+
+  function reservationListSectionHTML(title, reservations, expanded, sectionKey, maxCollapsed) {
+    if (!reservations.length) return "";
+    const visible = expanded ? reservations : reservations.slice(0, maxCollapsed);
+    const rows = visible.map(reservation => reservationRowHTML(reservation, { showRestaurantName: true })).join("");
+    const toggle = reservations.length > maxCollapsed
+      ? `<button class="text-button link" type="button" data-toggle-section="${sectionKey}" style="margin:10px 24px 0;">${expanded ? "Weniger anzeigen" : `Alle anzeigen (${reservations.length})`}</button>`
+      : "";
+    return `
+      <div class="section-divider"></div>
+      <h2 class="profile-section-title">${escapeHTML(title)}</h2>
+      <ul class="receipt-items reservation-block">${rows}</ul>
+      ${toggle}`;
+  }
+
+  function renderStartTab() {
+    state.detailRestaurantID = null;
+    const overview = state.overview || { email: "", restaurants: [] };
+    const restaurants = overviewRestaurants();
+    const receipts = overviewReceipts();
+    const reservations = overviewReservations();
+    const restaurantNames = new Map(restaurants.map(item => [item.restaurantID, item.name || "Restaurant"]));
+
+    const now = Date.now();
+    const today = new Date().toDateString();
+    const cancelledToday = reservations.filter(item => item.status === "cancelled" && item.startsAt && new Date(item.startsAt).toDateString() === today);
+    const upcoming = reservations.filter(item => item.status !== "cancelled" && item.startsAt && new Date(item.startsAt).getTime() > now)
+      .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+    const past = reservations.filter(item => item.status !== "cancelled" && item.startsAt && new Date(item.startsAt).getTime() <= now)
+      .sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
+
+    const receiptRows = receipts.slice(0, 5).map(receipt => `
+      <li>
+        <a class="receipt-link" href="${GASTPORTAL_URL}?receipt=${encodeURIComponent(receipt.token || "")}">
+          <span><strong>${escapeHTML(receipt.invoiceNumber || "Rechnung")}</strong><br><small>${escapeHTML(restaurantNames.get(receipt.restaurantID) || "Haviko Restaurant")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</small></span>
+          <strong>${money.format(Number(receipt.grossAmount || 0))}</strong>
+        </a>
+      </li>`).join("");
+    const receiptCollection = receipts.length ? `
+      <div class="section-divider"></div>
+      <h2 class="profile-section-title">Belege</h2>
+      <ul class="receipt-items">${receiptRows}</ul>
+      ${receipts.length > 5 ? `<button class="text-button link" type="button" id="open-receipts-archive" style="margin:0 24px;">Alle anzeigen (${receipts.length})</button>` : ""}` : "";
+
+    const smartNotifications = computeSmartNotifications();
+    const notificationRows = smartNotifications.slice(0, 5).map(notification => `
+      <li class="notification-row" data-notification-id="${escapeHTML(notification.id || "")}" data-notification-restaurant="${escapeHTML(notification.restaurantID || "")}" data-notification-server="${notification.server ? "1" : "0"}">
+        ${notification.server ? (notification.readAt ? "" : '<span class="notification-dot" aria-label="Neu"></span>') : ""}
+        <span><strong>${escapeHTML(notification.title || "Neue Mitteilung")}</strong><br><small>${escapeHTML(notification.message || "")}</small></span>
+        <span class="chevron" aria-hidden="true">›</span>
+      </li>`).join("");
+    const notificationBlock = notificationRows ? `
+      <div class="section-divider"></div>
+      <h2 class="profile-section-title">Mitteilungen</h2>
+      <ul class="receipt-items notification-list">${notificationRows}</ul>
+      ${smartNotifications.length > 5 ? `<button class="text-button link" type="button" id="open-notifications-page" style="margin:0 24px;">Alle anzeigen (${smartNotifications.length})</button>` : ""}` : "";
+
+    const loyaltyCount = restaurants.filter(restaurant => !!restaurant.loyalty).length;
+    const loyaltySummary = loyaltyCount > 0
+      ? `<div class="receipt-meta">Du hast bei ${loyaltyCount} Haviko-Restaurant${loyaltyCount === 1 ? "" : "s"} Stempelkarten.</div>`
+      : "";
+
+    const searchValue = String($("restaurant-search")?.value || "").trim().toLowerCase();
+    const filteredRestaurants = searchValue
+      ? restaurants.filter(item => (item.name || "").toLowerCase().includes(searchValue))
+      : restaurants;
+    const sortedRestaurants = [...filteredRestaurants].sort((a, b) => Number(b.isFavorite) - Number(a.isFavorite));
+
+    const rows = sortedRestaurants.map(restaurant => `
+      <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
+        <span style="flex:1; min-width:0;">
+          <strong>${escapeHTML(restaurant.name || "Restaurant")}</strong>
+          ${restaurantBadgesHTML(restaurant)}
+          <small>${restaurant.loyalty ? `Stempelkarte: ${Number(restaurant.loyalty.stampsIntoCurrentCard || 0)}/${Number(restaurant.loyalty.visitsRequired || 0)}` : `${Number(restaurant.completedVisits || 0)} besuchte Reservierungen`}</small>
+        </span>
+        <button class="favorite-toggle ${restaurant.isFavorite ? "active" : ""}" type="button" data-favorite-toggle="${escapeHTML(restaurant.restaurantID || "")}" aria-label="${restaurant.isFavorite ? "Favorit entfernen" : "Als Favorit merken"}">${restaurant.isFavorite ? "♥" : "♡"}</button>
+        <span class="chevron" aria-hidden="true">›</span>
+      </li>`).join("") || '<li><span>Keine Restaurants gefunden.</span></li>';
+
+    const profile = overview.profile || {};
+    const displayName = profile.displayName || overview.name || "";
+    const nearby = Array.isArray(overview.nearbyRestaurants) ? overview.nearbyRestaurants : [];
+    const nearbyBlock = nearby.length ? `
+      <div class="section-divider"></div>
+      <div class="receipt-meta"><strong>Andere Haviko-Restaurants in deiner Nähe</strong></div>
+      <ul class="receipt-items">
+        ${nearby.map(item => `
+          <li>
+            <span><strong>${escapeHTML(item.name || "Restaurant")}</strong><br><small>${escapeHTML(item.address || "")}</small></span>
+            <a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(item.publicID || "")}">Ansehen</a>
+          </li>`).join("")}
+      </ul>` : "";
+
+    const el = $("guest-overview");
+    el.innerHTML = `
+      <header><div><p class="eyebrow">Gastportal</p><h1>${displayName ? `${timeOfDayGreeting()}, ${escapeHTML(displayName)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
+      <div class="receipt-meta" style="padding-top:4px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+      ${notificationBlock}
+      ${receiptCollection}
+      ${notificationBlock || receiptCollection ? '<div class="section-divider"></div>' : ""}
+      ${loyaltySummary}
+      <div class="search-field"><input id="restaurant-search" type="search" placeholder="Restaurant suchen…" value="${escapeHTML(searchValue)}"></div>
+      <h2 class="profile-section-title">Restaurants</h2>
+      <ul class="receipt-items restaurant-list">${rows}</ul>
+      ${nearbyBlock}
+      ${reservationListSectionHTML("Stornierte Reservierungen", cancelledToday, state.startSection.cancelledExpanded, "cancelled", 1)}
+      ${reservationListSectionHTML("Anstehende Reservierungen", upcoming, state.startSection.upcomingExpanded, "upcoming", 4)}
+      ${reservationListSectionHTML("Vergangene Reservierungen", past, state.startSection.pastExpanded, "past", 2)}`;
+
+    $("logout-link").addEventListener("click", event => {
+      event.preventDefault();
+      logout();
+    });
+
+    const searchInput = $("restaurant-search");
+    searchInput.addEventListener("input", () => renderStartTab());
+    searchInput.focus();
+    searchInput.setSelectionRange(searchValue.length, searchValue.length);
+
+    el.querySelectorAll(".restaurant-row[data-restaurant-id]").forEach(row => {
+      const id = row.getAttribute("data-restaurant-id");
+      if (!id) return;
+      row.addEventListener("click", () => renderRestaurantDetail(id));
+    });
+
+    bindFavoriteButtons(el);
+    bindReservationRowActions(el, () => renderStartTab());
+
+    el.querySelectorAll("[data-toggle-section]").forEach(button => {
+      button.addEventListener("click", () => {
+        const key = button.getAttribute("data-toggle-section");
+        if (key === "cancelled") state.startSection.cancelledExpanded = !state.startSection.cancelledExpanded;
+        if (key === "upcoming") state.startSection.upcomingExpanded = !state.startSection.upcomingExpanded;
+        if (key === "past") state.startSection.pastExpanded = !state.startSection.pastExpanded;
+        renderStartTab();
+      });
+    });
+
+    const receiptsArchiveButton = $("open-receipts-archive");
+    if (receiptsArchiveButton) receiptsArchiveButton.addEventListener("click", () => renderReceiptsArchivePage());
+    const notificationsPageButton = $("open-notifications-page");
+    if (notificationsPageButton) notificationsPageButton.addEventListener("click", () => renderNotificationsPage());
+
+    el.querySelectorAll(".notification-row[data-notification-id]").forEach(row => {
+      row.addEventListener("click", async () => {
+        const notificationID = row.getAttribute("data-notification-id");
+        const restaurantID = row.getAttribute("data-notification-restaurant");
+        const isServer = row.getAttribute("data-notification-server") === "1";
+        if (isServer && notificationID) {
+          try {
+            await Api.rpc("mark_guest_notification_read", { p_notification_id: notificationID });
+            const notification = state.notifications.find(item => item.id === notificationID);
+            if (notification) notification.read_at = new Date().toISOString();
+            updateNotificationBadge();
+          } catch {}
+        }
+        const restaurant = restaurants.find(item => item.restaurantID === restaurantID);
+        if (restaurant) openReviews(restaurant);
+      });
+    });
+  }
+
+  // ==========================================================================
+  // Profil tab: quick links, favorites shortlist, profile form (incl. phone
+  // country code + dietary notes), danger zone (account deletion), logout.
+  // ==========================================================================
+  function renderProfileTab() {
+    const overview = state.overview || { email: "", restaurants: [] };
+    const profile = overview.profile || {};
+    const restaurants = overviewRestaurants();
+    const favoriteRestaurants = restaurants.filter(item => item.isFavorite);
+    const favoritesBlock = favoriteRestaurants.length ? `
+      <div class="receipt-meta"><strong>Favoriten</strong></div>
+      <ul class="receipt-items">
+        ${favoriteRestaurants.map(restaurant => `
+          <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
+            <span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </li>`).join("")}
+      </ul>
+      <div class="section-divider"></div>` : "";
+
+    const existingPhone = String(profile.phone || "");
+    const knownCode = PHONE_COUNTRIES.map(item => item[1]).sort((a, b) => b.length - a.length).find(code => existingPhone.startsWith(code));
+    const phoneCode = knownCode || "+49";
+    const phoneLocal = knownCode ? existingPhone.slice(knownCode.length).trim() : existingPhone;
+
+    const el = $("guest-profile");
+    el.innerHTML = `
+      <header><div><p class="eyebrow">Gastportal</p><h1>Profil</h1></div></header>
+      <div class="receipt-meta" style="padding-top:4px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+      <div class="section-divider"></div>
+      <div class="quick-links">
+        <button class="quick-link" type="button" id="quick-receipts">Deine Rechnungen<span class="chevron">›</span></button>
+        <button class="quick-link" type="button" id="quick-loyalty">Stempelkarten und Gutscheine<span class="chevron">›</span></button>
+        <button class="quick-link" type="button" id="quick-wallet">Dein QR-Code &amp; Apple Wallet<span class="chevron">›</span></button>
+        <button class="quick-link" type="button" id="quick-notifications">Mitteilungen<span class="chevron">›</span></button>
+        <button class="quick-link" type="button" id="quick-legal">Rechtliches</button>
+      </div>
+      <div class="section-divider"></div>
+      ${favoritesBlock}
+      <div class="receipt-meta" style="padding-bottom:4px"><strong style="margin:0; font-size:17px;">Dein Profil</strong></div>
+      <form id="profile-form" style="padding:4px 24px 24px; display:grid; gap:14px;">
+        <label class="field">
+          <span>Name</span>
+          <input id="profile-name" type="text" value="${escapeHTML(profile.displayName || "")}">
+        </label>
+        <label class="field">
+          <span>Telefon</span>
+          <div class="phone-field">
+            <select id="profile-phone-country" aria-label="Ländervorwahl"></select>
+            <input id="profile-phone" type="tel" value="${escapeHTML(phoneLocal)}">
+          </div>
+        </label>
+        <label class="field">
+          <span>Straße</span>
+          <input id="profile-street" type="text" value="${escapeHTML(profile.street || "")}">
+        </label>
+        <div class="field-grid">
+          <label class="field">
+            <span>Hausnummer</span>
+            <input id="profile-house-number" type="text" value="${escapeHTML(profile.houseNumber || "")}">
+          </label>
+          <label class="field">
+            <span>Postleitzahl</span>
+            <input id="profile-postal-code" type="text" value="${escapeHTML(profile.postalCode || "")}">
+          </label>
+        </div>
+        <label class="field">
+          <span>Ort</span>
+          <input id="profile-city" type="text" value="${escapeHTML(profile.city || "")}">
+        </label>
+        <label class="field">
+          <span>Allergien &amp; Ernährung</span>
+          <textarea id="profile-dietary" rows="2" placeholder="z. B. Nussallergie, vegetarisch …">${escapeHTML(profile.dietaryNotes || "")}</textarea>
+        </label>
+        <p class="field-hint">Gilt als Vorschlag für neue Reservierungen. Bei jedem Restaurant, bei dem du zum ersten Mal reservierst, entsteht ein eigenes, unabhängiges Profil.</p>
+        <p class="form-error" id="profile-message" role="alert"></p>
+        <button class="primary full" type="submit">Profil speichern</button>
+      </form>
+      <div class="section-divider"></div>
+      <div style="padding:0 24px 24px;">
+        <button class="secondary full" type="button" id="profile-logout-button">Abmelden</button>
+      </div>
+      <div class="danger-zone">
+        <h3>Konto löschen</h3>
+        <p>Dein Konto und deine Kontaktdaten werden entfernt. Deine Reservierungshistorie bleibt beim jeweiligen Restaurant erhalten, wird aber anonymisiert.</p>
+        <button class="danger-button" type="button" id="open-account-deletion">Konto löschen</button>
+      </div>`;
+
+    fillPhoneCountrySelect($("profile-phone-country"));
+    $("profile-phone-country").value = phoneCode;
+
+    el.querySelectorAll(".restaurant-row[data-restaurant-id]").forEach(row => {
+      const id = row.getAttribute("data-restaurant-id");
+      if (!id) return;
+      row.addEventListener("click", () => {
+        setActiveTab("start");
+        renderRestaurantDetail(id);
+      });
+    });
+
+    $("profile-logout-button").addEventListener("click", () => logout());
+    $("quick-receipts").addEventListener("click", () => renderReceiptsArchivePage());
+    $("quick-loyalty").addEventListener("click", () => renderLoyaltyOverviewPage());
+    $("quick-wallet").addEventListener("click", () => renderWalletPage());
+    $("quick-notifications").addEventListener("click", () => renderNotificationsPage());
+    $("quick-legal").addEventListener("click", () => renderLegalPage());
+    $("open-account-deletion").addEventListener("click", () => renderAccountDeletionPage());
+
+    $("profile-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const messageEl = $("profile-message");
+      messageEl.classList.remove("visible", "success");
+      const phoneCountry = $("profile-phone-country").value;
+      const phoneValue = $("profile-phone").value.trim();
+      const payload = {
+        p_display_name: $("profile-name").value,
+        p_phone: phoneValue ? `${phoneCountry} ${phoneValue}` : "",
+        p_street: $("profile-street").value,
+        p_house_number: $("profile-house-number").value,
+        p_postal_code: $("profile-postal-code").value,
+        p_city: $("profile-city").value,
+        p_dietary_notes: $("profile-dietary").value
+      };
+      try {
+        await Api.rpc("update_my_guest_account", payload);
+        if (state.overview) {
+          state.overview.profile = {
+            displayName: payload.p_display_name,
+            phone: payload.p_phone,
+            street: payload.p_street,
+            houseNumber: payload.p_house_number,
+            postalCode: payload.p_postal_code,
+            city: payload.p_city,
+            dietaryNotes: payload.p_dietary_notes
+          };
+        }
+        messageEl.textContent = "Profil gespeichert.";
+        messageEl.classList.add("visible", "success");
+      } catch (error) {
+        messageEl.textContent = error.message || "Profil konnte nicht gespeichert werden.";
+        messageEl.classList.add("visible");
+      }
+    });
+  }
+
+  // ==========================================================================
+  // Account deletion page: matches the app's 3-second confirmation delay
+  // (skippable when "cancel upcoming reservations" is checked).
+  // ==========================================================================
+  function renderAccountDeletionPage() {
+    const el = showGuestPage(`
+      <header><div><p class="eyebrow">Gastportal</p><h1>Konto löschen</h1></div><button class="link" type="button" id="deletion-back">Zurück</button></header>
+      <div class="receipt-meta">
+        <span>Dein Konto und deine Kontaktdaten werden vollständig entfernt.</span>
+        <span>Deine Reservierungshistorie bleibt beim jeweiligen Restaurant erhalten, wird aber anonymisiert ("Anonym").</span>
+        <span>Bereits bestehende Gästeregister-Einträge der Restaurants bleiben davon unabhängig unberührt.</span>
+      </div>
+      <div style="padding:0 24px 8px;">
+        <label class="field" style="display:flex; flex-direction:row; align-items:center; gap:10px;">
+          <input id="cancel-upcoming-toggle" type="checkbox" style="min-height:auto; flex:none; width:20px; height:20px;">
+          <span>Zukünftige Reservierungen ebenfalls stornieren</span>
+        </label>
+      </div>
+      <p class="form-error" id="deletion-message" role="alert" style="margin:0 24px 16px;"></p>
+      <div style="padding:0 24px 24px;">
+        <button class="danger-button" type="button" id="confirm-deletion" disabled>Konto endgültig löschen (3s)</button>
+      </div>`);
+
+    $("deletion-back").addEventListener("click", () => setActiveTab("profile"));
+
+    const confirmButton = $("confirm-deletion");
+    const toggle = $("cancel-upcoming-toggle");
+    let secondsRemaining = 3;
+    const updateButton = () => {
+      if (toggle.checked || secondsRemaining <= 0) {
+        confirmButton.disabled = false;
+        confirmButton.textContent = "Konto endgültig löschen";
+      } else {
+        confirmButton.disabled = true;
+        confirmButton.textContent = `Konto endgültig löschen (${secondsRemaining}s)`;
+      }
+    };
+    const timer = setInterval(() => {
+      secondsRemaining -= 1;
+      updateButton();
+      if (secondsRemaining <= 0) clearInterval(timer);
+    }, 1000);
+    toggle.addEventListener("change", updateButton);
+    updateButton();
+
+    confirmButton.addEventListener("click", async () => {
+      if (!confirm("Konto wirklich unwiderruflich löschen?")) return;
+      confirmButton.disabled = true;
+      const messageEl = $("deletion-message");
+      messageEl.classList.remove("visible");
+      try {
+        const response = await Api.invokeFunction("delete-guest-account", { cancelUpcoming: toggle.checked });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.error || "Das Konto konnte nicht gelöscht werden.");
+        }
+        Session.clear();
+        window.location.href = GASTPORTAL_URL;
+      } catch (error) {
+        messageEl.textContent = error.message || "Das Konto konnte nicht gelöscht werden.";
+        messageEl.classList.add("visible");
+        confirmButton.disabled = false;
+      }
+    });
+  }
+
+  // ==========================================================================
+  // Legal documents page.
+  // ==========================================================================
+  async function renderLegalPage() {
+    const el = showGuestPage('<header><div><p class="eyebrow">Gastportal</p><h1>Rechtliches</h1></div><button class="link" type="button" id="legal-back">Zurück</button></header><div class="receipt-meta">Wird geladen…</div>');
+    $("legal-back").addEventListener("click", () => setActiveTab("profile"));
+    try {
+      const bundle = await Api.rpc("get_current_guest_legal_bundle");
+      const documents = Array.isArray(bundle?.documents) ? bundle.documents : [];
+      const body = documents.map(doc => `
+        <div class="section-divider"></div>
+        <div class="receipt-meta"><strong>${escapeHTML(doc.title || doc.documentType || "Dokument")}</strong></div>
+        ${(doc.sections || []).map(section => `
+          <div class="table-info-grid"><div><strong>${escapeHTML(section.title || "")}</strong>${escapeHTML(section.body || "")}</div></div>`).join("")}`).join("");
+      el.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Rechtliches</h1></div><button class="link" type="button" id="legal-back">Zurück</button></header>${body || '<div class="receipt-meta">Keine Dokumente verfügbar.</div>'}`;
+      $("legal-back").addEventListener("click", () => setActiveTab("profile"));
+    } catch (error) {
+      el.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Rechtliches</h1></div><button class="link" type="button" id="legal-back">Zurück</button></header><div class="receipt-meta">${escapeHTML(error.message || "Konnte nicht geladen werden.")}</div>`;
+      $("legal-back").addEventListener("click", () => setActiveTab("profile"));
+    }
+  }
+
+  // ==========================================================================
+  // Receipts archive: all receipts grouped by restaurant, newest first.
+  // ==========================================================================
+  function renderReceiptsArchivePage() {
+    const restaurants = overviewRestaurants();
+    const receipts = overviewReceipts();
+    const byRestaurant = new Map();
+    receipts.forEach(receipt => {
+      const list = byRestaurant.get(receipt.restaurantID) || [];
+      list.push(receipt);
+      byRestaurant.set(receipt.restaurantID, list);
+    });
+    const groups = [...byRestaurant.entries()].map(([restaurantID, list]) => {
+      const restaurant = restaurantByID(restaurantID);
+      const sorted = list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      const rows = sorted.map(receipt => `
+        <li>
+          <a class="receipt-link" href="${GASTPORTAL_URL}?receipt=${encodeURIComponent(receipt.token || "")}">
+            <span><strong>${escapeHTML(receipt.invoiceNumber || "Rechnung")}</strong><br><small>${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</small></span>
+            <strong>${money.format(Number(receipt.grossAmount || 0))}</strong>
+          </a>
+        </li>`).join("");
+      return `<div class="receipt-meta"><strong>${escapeHTML(restaurant?.name || "Restaurant")}</strong></div><ul class="receipt-items">${rows}</ul>`;
+    }).join("<div class=\"section-divider\"></div>");
+
+    const el = showGuestPage(`
+      <header><div><p class="eyebrow">Gastportal</p><h1>Deine Rechnungen</h1></div><button class="link" type="button" id="receipts-back">Zurück</button></header>
+      ${groups || '<div class="receipt-meta">Noch keine Rechnungen vorhanden.</div>'}`);
+    $("receipts-back").addEventListener("click", () => setActiveTab("profile"));
+  }
+
+  // ==========================================================================
+  // Loyalty overview: a stamp card for every restaurant that has one.
+  // ==========================================================================
+  function loyaltyCardHTML(restaurant) {
+    const loyalty = restaurant.loyalty;
+    if (!loyalty) return "";
+    const stamps = Array.from({ length: Number(loyalty.visitsRequired || 0) }, (_, index) => {
+      const filled = index < Number(loyalty.stampsIntoCurrentCard || 0);
+      return `<i class="${filled ? "filled" : ""}">${filled ? "★" : ""}</i>`;
+    }).join("");
+    const rewardReady = Number(loyalty.stampsIntoCurrentCard || 0) === 0 && Number(loyalty.rewardsEarned || 0) > 0;
+    const voucherBlock = rewardReady && loyalty.voucherCode ? `
+      <div class="voucher-code"><span>${escapeHTML(loyalty.voucherCode)}</span><button class="voucher-copy" type="button" data-copy-voucher="${escapeHTML(loyalty.voucherCode)}">Kopieren</button></div>` : "";
+    return `
+      <div class="loyalty-card">
+        <div class="receipt-meta" style="padding:0 0 8px;"><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong></div>
+        <div class="loyalty-progress">${rewardReady ? "Prämie bereit" : `${Number(loyalty.stampsIntoCurrentCard || 0)} von ${Number(loyalty.visitsRequired || 0)} Besuchen`}</div>
+        <div class="loyalty-stamps">${stamps}</div>
+        <div class="loyalty-reward">${escapeHTML(rewardText(loyalty))}</div>
+        ${Number(loyalty.rewardsEarned || 0) > 0 ? `<div class="loyalty-earned">${Number(loyalty.rewardsEarned)} Prämie${loyalty.rewardsEarned === 1 ? "" : "n"} eingelöst</div>` : ""}
+        ${voucherBlock}
+      </div>`;
+  }
+
+  function bindVoucherCopyButtons(root) {
+    root.querySelectorAll("[data-copy-voucher]").forEach(button => {
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.getAttribute("data-copy-voucher") || "");
+          const original = button.textContent;
+          button.textContent = "Kopiert!";
+          setTimeout(() => { button.textContent = original; }, 1500);
+        } catch {}
+      });
+    });
+  }
+
+  function renderLoyaltyOverviewPage() {
+    const restaurants = overviewRestaurants().filter(item => item.loyalty);
+    const el = showGuestPage(`
+      <header><div><p class="eyebrow">Gastportal</p><h1>Stempelkarten &amp; Gutscheine</h1></div><button class="link" type="button" id="loyalty-back">Zurück</button></header>
+      ${restaurants.length ? restaurants.map(loyaltyCardHTML).join("") : '<div class="receipt-meta">Du hast noch keine Stempelkarten.</div>'}`);
+    $("loyalty-back").addEventListener("click", () => setActiveTab("profile"));
+    bindVoucherCopyButtons(el);
+  }
+
+  // ==========================================================================
+  // Wallet / QR page: client-side generated QR code for the guest's wallet
+  // code, plus an "Add to Apple Wallet" download (works in mobile Safari).
+  // ==========================================================================
+  async function renderWalletPage() {
+    const el = showGuestPage('<header><div><p class="eyebrow">Gastportal</p><h1>Dein QR-Code</h1></div><button class="link" type="button" id="wallet-back">Zurück</button></header><div class="receipt-meta">Wird geladen…</div>');
+    $("wallet-back").addEventListener("click", () => setActiveTab("profile"));
+    try {
+      const code = await Api.rpc("get_my_guest_wallet_code");
+      const restaurants = overviewRestaurants().filter(item => item.loyalty);
+      el.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>Dein QR-Code</h1></div><button class="link" type="button" id="wallet-back">Zurück</button></header>
+        <div class="wallet-code-box">
+          <canvas id="wallet-qr-canvas"></canvas>
+          <div class="wallet-code-text">${escapeHTML(code || "")}</div>
+          <p class="field-hint" style="max-width:360px;">Zeige diesen Code beim Bezahlen als Walk-in, damit der Besuch deinem Gastportal zugeordnet wird.</p>
+          <div class="receipt-actions">
+            <button type="button" id="wallet-add-button">Zur Apple Wallet hinzufügen</button>
+          </div>
+          <p class="form-error" id="wallet-message" role="alert"></p>
+        </div>
+        ${restaurants.length ? '<div class="section-divider"></div>' : ""}
+        ${restaurants.map(loyaltyCardHTML).join("")}`;
+      $("wallet-back").addEventListener("click", () => setActiveTab("profile"));
+      bindVoucherCopyButtons(el);
+      if (window.QRCode?.toCanvas && code) {
+        QRCode.toCanvas($("wallet-qr-canvas"), code, { width: 220, margin: 1, color: { dark: "#14211d", light: "#ffffff" } }, () => {});
+      }
+      $("wallet-add-button").addEventListener("click", async () => {
+        const messageEl = $("wallet-message");
+        messageEl.classList.remove("visible");
+        try {
+          const response = await Api.invokeFunction("guest-wallet-pass", {});
+          if (!response.ok) throw new Error("Die Wallet-Karte konnte nicht erstellt werden.");
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          window.location.href = url;
+        } catch (error) {
+          messageEl.textContent = error.message || "Die Wallet-Karte konnte nicht erstellt werden.";
+          messageEl.classList.add("visible");
+        }
+      });
+    } catch (error) {
+      el.innerHTML = `<header><div><p class="eyebrow">Gastportal</p><h1>Dein QR-Code</h1></div><button class="link" type="button" id="wallet-back">Zurück</button></header><div class="receipt-meta">${escapeHTML(error.message || "Der Code konnte nicht geladen werden.")}</div><div class="receipt-actions"><button type="button" id="wallet-retry">Erneut versuchen</button></div>`;
+      $("wallet-back").addEventListener("click", () => setActiveTab("profile"));
+      $("wallet-retry").addEventListener("click", () => renderWalletPage());
+    }
+  }
+
+  // ==========================================================================
+  // Notifications page: full combined feed, grouped by day.
+  // ==========================================================================
+  function dayGroupLabel(dateObj) {
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+    if (dateObj.toDateString() === today.toDateString()) return "Heute";
+    if (dateObj.toDateString() === yesterday.toDateString()) return "Gestern";
+    return new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(dateObj);
+  }
+
+  async function renderNotificationsPage() {
+    const el = showGuestPage('<header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-back">Zurück</button></header><div class="receipt-meta">Wird geladen…</div>');
+    $("notif-back").addEventListener("click", () => setActiveTab("profile"));
+    try {
+      state.notifications = await Api.rpc("list_my_guest_notifications");
+    } catch {}
+    const items = computeSmartNotifications();
+    const groups = new Map();
+    items.forEach(item => {
+      const label = dayGroupLabel(new Date(item.createdAt || Date.now()));
+      const list = groups.get(label) || [];
+      list.push(item);
+      groups.set(label, list);
+    });
+    const body = [...groups.entries()].map(([label, list]) => `
+      <h2 class="notif-day-title">${escapeHTML(label)}</h2>
+      <ul class="receipt-items notification-list">
+        ${list.map(item => `
+          <li class="notification-row" data-notification-id="${escapeHTML(item.id || "")}" data-notification-restaurant="${escapeHTML(item.restaurantID || "")}" data-notification-server="${item.server ? "1" : "0"}">
+            ${item.server && !item.readAt ? '<span class="notification-dot" aria-label="Neu"></span>' : ""}
+            <span><strong>${escapeHTML(item.title || "Mitteilung")}</strong><br><small>${escapeHTML(item.message || "")}</small></span>
+            <span class="chevron" aria-hidden="true">›</span>
+          </li>`).join("")}
+      </ul>`).join("");
+    el.innerHTML = `
+      <header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-back">Zurück</button></header>
+      ${body || '<div class="receipt-meta">Keine Mitteilungen.</div>'}`;
+    $("notif-back").addEventListener("click", () => setActiveTab("profile"));
+    markNotificationsSeenNow();
+    updateNotificationBadge();
+    el.querySelectorAll(".notification-row[data-notification-id]").forEach(row => {
+      row.addEventListener("click", async () => {
+        const notificationID = row.getAttribute("data-notification-id");
+        const restaurantID = row.getAttribute("data-notification-restaurant");
+        const isServer = row.getAttribute("data-notification-server") === "1";
+        if (isServer && notificationID) {
+          try {
+            await Api.rpc("mark_guest_notification_read", { p_notification_id: notificationID });
+            const notification = state.notifications.find(item => item.id === notificationID);
+            if (notification) notification.read_at = new Date().toISOString();
+            updateNotificationBadge();
+          } catch {}
+        }
+        const restaurant = restaurantByID(restaurantID);
+        if (restaurant) openReviews(restaurant);
+      });
+    });
+  }
+
+  $("open-notifications").addEventListener("click", () => renderNotificationsPage());
+  $("open-wallet").addEventListener("click", () => renderWalletPage());
+
+  // ==========================================================================
+  // Karte tab: Leaflet map with own / other Haviko / undiscovered restaurants,
+  // filterable by "only Haviko", "open now" and restaurant type.
+  // ==========================================================================
+  function getGuestLocation() {
+    return new Promise(resolve => {
+      if (!("geolocation" in navigator)) {
+        resolve(null);
+        return;
+      }
+      const timer = setTimeout(() => resolve(null), 4000);
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          clearTimeout(timer);
+          resolve({ lat: position.coords.latitude, lon: position.coords.longitude });
+        },
+        () => {
+          clearTimeout(timer);
+          resolve(null);
+        },
+        { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+      );
+    });
+  }
+
+  function averageRestaurantCoordinate() {
+    const points = overviewRestaurants().filter(item => Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude)));
+    if (!points.length) return null;
+    const lat = points.reduce((sum, item) => sum + Number(item.latitude), 0) / points.length;
+    const lon = points.reduce((sum, item) => sum + Number(item.longitude), 0) / points.length;
+    return { lat, lon };
+  }
+
+  async function fetchDiscoveredPlaces(lat, lon) {
+    try {
+      const rows = await Api.rpcPublic("get_nearby_discovered_places", { p_lat: lat, p_lng: lon, p_radius_km: 10 });
+      return Array.isArray(rows) ? rows : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function placeCategoryKey(categoryLabel) {
+    const text = String(categoryLabel || "").toLowerCase();
+    if (/caf(e|é)/.test(text)) return "cafe";
+    if (/bar|pub/.test(text)) return "bar";
+    if (/b[aä]cker/.test(text)) return "bakery";
+    if (/imbiss|fast.?food|burger|d[oö]ner|kebab/.test(text)) return "fast_food";
+    return "restaurant";
+  }
+
+  function restaurantCategoryKey(restaurant) {
+    return placeCategoryKey(restaurant.info?.restaurantType);
+  }
+
+  function matchesMapFilter(filter, isOwn, categoryKey, isOpen) {
+    if (filter === "all") return true;
+    if (filter === "mine") return isOwn;
+    if (filter === "open") return isOpen;
+    return categoryKey === filter;
+  }
+
+  function isRestaurantOpenNow(info) {
+    const day = weekdayAvailability(info?.dayAvailability, new Date());
+    if (!day || !day.isOpen || !Array.isArray(day.windows) || !day.windows.length) return false;
+    const now = new Date();
+    const minutesNow = now.getHours() * 60 + now.getMinutes();
+    return day.windows.some(window => minutesNow >= Number(window.startMinutes) && minutesNow <= Number(window.endMinutes));
+  }
+
+  function applyMapFilter() {
+    const filter = state.map.filter;
+    state.map.markers.forEach(entry => {
+      const visible = matchesMapFilter(filter, entry.isOwn, entry.categoryKey, entry.isOpen);
+      if (visible) {
+        if (!state.map.instance.hasLayer(entry.marker)) entry.marker.addTo(state.map.instance);
+      } else if (state.map.instance.hasLayer(entry.marker)) {
+        state.map.instance.removeLayer(entry.marker);
+      }
+    });
+  }
+
+  document.querySelectorAll("#map-filters .map-filter-btn").forEach(button => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll("#map-filters .map-filter-btn").forEach(other => other.classList.remove("active"));
+      button.classList.add("active");
+      state.map.filter = button.getAttribute("data-map-filter") || "all";
+      if (state.map.instance) applyMapFilter();
+    });
+  });
+
+  async function renderMapTab() {
+    if (state.map.loaded) return;
+    const mapElement = $("leaflet-map");
+    if (!mapElement) return;
+    state.map.loaded = true;
+
+    const deviceLocation = await getGuestLocation();
+    const fallback = averageRestaurantCoordinate();
+    const center = deviceLocation || fallback || { lat: 51.1657, lon: 10.4515 };
+    const zoom = deviceLocation || fallback ? 13 : 6;
+
+    const map = L.map(mapElement).setView([center.lat, center.lon], zoom);
+    state.map.instance = map;
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap-Mitwirkende"
+    }).addTo(map);
+
+    overviewRestaurants().forEach(restaurant => {
+      const lat = Number(restaurant.latitude);
+      const lon = Number(restaurant.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      const marker = L.circleMarker([lat, lon], { radius: 8, color: "#087966", fillColor: "#087966", fillOpacity: 0.9, weight: 2 })
+        .bindPopup(`<strong>${escapeHTML(restaurant.name || "Restaurant")}</strong>`);
+      state.map.markers.push({ marker, isOwn: true, categoryKey: restaurantCategoryKey(restaurant), isOpen: isRestaurantOpenNow(restaurant.info) });
+    });
+
+    const nearbyRestaurants = Array.isArray(state.overview?.nearbyRestaurants) ? state.overview.nearbyRestaurants : [];
+    nearbyRestaurants.forEach(restaurant => {
+      const lat = Number(restaurant.latitude);
+      const lon = Number(restaurant.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+      const marker = L.circleMarker([lat, lon], { radius: 7, color: "#2f6fed", fillColor: "#2f6fed", fillOpacity: 0.9, weight: 2 })
+        .bindPopup(`<strong>${escapeHTML(restaurant.name || "Restaurant")}</strong><br>${escapeHTML(restaurant.address || "")}<br><a class="link" href="https://reservierung.haviko.de/?r=${encodeURIComponent(restaurant.publicID || "")}">Ansehen</a>`);
+      state.map.markers.push({ marker, isOwn: false, categoryKey: restaurantCategoryKey(restaurant), isOpen: isRestaurantOpenNow(restaurant.info) });
+    });
+
+    const discoveredPlaces = await fetchDiscoveredPlaces(center.lat, center.lon);
+    discoveredPlaces
+      .filter(place => !place.claimed_restaurant_id)
+      .forEach(place => {
+        const lat = Number(place.latitude);
+        const lon = Number(place.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+        const claimURL = new URL("https://login.haviko.de/");
+        claimURL.searchParams.set("mode", "register");
+        claimURL.searchParams.set("claimPlaceId", place.id || "");
+        claimURL.searchParams.set("claimName", place.name || "");
+        claimURL.searchParams.set("claimAddress", place.address || "");
+        if (place.phone) claimURL.searchParams.set("claimPhone", place.phone);
+        const marker = L.circleMarker([lat, lon], { radius: 6, color: "#9caaa5", fillColor: "#9caaa5", fillOpacity: 0.85, weight: 2 })
+          .bindPopup(`<strong>${escapeHTML(place.name || "Restaurant")}</strong><br>${escapeHTML(place.address || place.category_label || "")}<br><a class="link" href="${claimURL.toString()}">Restaurant beanspruchen</a>`);
+        state.map.markers.push({ marker, isOwn: false, categoryKey: placeCategoryKey(place.category_label), isOpen: false });
+      });
+
+    applyMapFilter();
+    setTimeout(() => map.invalidateSize(), 150);
+  }
+
+  // ==========================================================================
+  // Restaurant detail view (opened from Start or Profil tab).
+  // ==========================================================================
+  function rewardText(loyalty) {
+    if (!loyalty) return "";
+    if (loyalty.rewardKind === "voucher") return `Gutschein im Wert von ${money.format(Number(loyalty.voucherValue || 0))}`;
+    if (loyalty.rewardKind === "discount") return `${Number(loyalty.discountPercentage || 0)}% Rabatt`;
+    return loyalty.freeProductName || "Prämie";
+  }
+
+  function renderRestaurantDetail(restaurantID) {
+    const restaurant = overviewRestaurants().find(item => item.restaurantID === restaurantID);
+    if (!restaurant) return renderStartTab();
+    state.detailRestaurantID = restaurantID;
+
+    if (restaurant.isActivated === false) {
+      const isSuspended = Boolean(restaurant.suspensionReason);
+      const phone = restaurant.info?.phone || "";
+      const el = $("guest-overview");
+      el.innerHTML = `
+        <header><div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div><a class="link" href="#" id="back-to-restaurants">Zurück</a></header>
+        <div style="padding:36px 24px; text-align:center;">
+          <div style="width:56px;height:56px;margin:0 auto 16px;display:grid;place-items:center;border-radius:50%;background:${isSuspended ? "#fdecee" : "#fff3e0"};color:${isSuspended ? "#c0374a" : "#b5680a"};">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h2 style="margin:0 0 8px;font-size:20px;">${escapeHTML(restaurant.name || "Restaurant")} ist ${isSuspended ? "momentan gesperrt" : "momentan nicht verfügbar"}</h2>
+          <p style="margin:0 0 20px;color:var(--muted);">${isSuspended ? "Ruf das Restaurant gerne direkt an, falls du Fragen zu einer Reservierung oder Bestellung hast." : "Bitte kontaktiere das Restaurant direkt für weitere Informationen."}</p>
+          ${phone ? `<a class="primary" href="tel:${escapeHTML(phone.replace(/[^0-9+]/g, ""))}" style="display:inline-flex;text-decoration:none;">${escapeHTML(phone)}</a>` : ""}
+        </div>`;
+      $("back-to-restaurants")?.addEventListener("click", (event) => { event.preventDefault(); renderStartTab(); });
+      return;
+    }
+    const reservations = overviewReservations().filter(item => item.restaurantID === restaurantID)
+      .sort((a, b) => new Date(b.startsAt || 0) - new Date(a.startsAt || 0));
+    const receipts = overviewReceipts().filter(item => item.restaurantID === restaurantID);
+    const loyalty = restaurant.loyalty;
+
+    const infoParts = restaurant.info ? buildRestaurantInfoParts(restaurant.info) : [];
+    const infoBlock = infoParts.length ? `
+      <div class="receipt-meta"><strong>Restaurant-Infos</strong></div>
+      <div class="table-info-grid">${infoParts.join("")}</div>` : "";
+
+    const menuBlock = Array.isArray(restaurant.menu) && restaurant.menu.length ? `
+      <details class="menu-details">
+        <summary>Speisekarte anzeigen</summary>
+        <div class="menu-list">${renderMenuHTML(restaurant.menu)}</div>
+      </details>` : "";
+
+    const loyaltyBlock = loyalty ? `
+      <div class="receipt-meta"><strong>Stempelkarte</strong></div>
+      ${loyaltyCardHTML(restaurant)}` : "";
+
+    const receiptRows = receipts.map(receipt => `
+      <li>
+        <span><strong>${escapeHTML(receipt.invoiceNumber || "Rechnung")}</strong><br><small>${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</small></span>
+        <a class="link" href="${GASTPORTAL_URL}?receipt=${encodeURIComponent(receipt.token)}">${money.format(Number(receipt.grossAmount || 0))}</a>
+      </li>`).join("");
+    const receiptsBlock = receipts.length ? `
+      <div class="receipt-meta"><strong>Digitale Rechnungen</strong></div>
+      <ul class="receipt-items">${receiptRows}</ul>` : "";
+
+    const reservationRows = reservations.map(reservation => reservationRowHTML(reservation, { showRestaurantName: false })).join("")
+      || '<li><span>Noch keine Reservierungen bei diesem Restaurant.</span></li>';
+
+    const lastReservation = reservations[0];
+    const repeatURL = new URL("https://reservierung.haviko.de/");
+    repeatURL.searchParams.set("r", restaurant.publicID || "");
+    if (lastReservation) {
+      repeatURL.searchParams.set("guests", String(lastReservation.guests || 2));
+      if (lastReservation.area) repeatURL.searchParams.set("area", lastReservation.area);
+    }
+    const repeatButton = lastReservation
+      ? `<a class="secondary" href="${repeatURL.toString()}">Wie letztes Mal reservieren</a>`
+      : "";
+
+    const profile = state.overview.profile || {};
+    const fullName = (profile.displayName || state.overview.name || "").trim();
+    const nameParts = fullName.split(" ");
+    const newBookingURL = new URL("https://reservierung.haviko.de/");
+    newBookingURL.searchParams.set("r", restaurant.publicID || "");
+    newBookingURL.searchParams.set("guestLocked", "1");
+    newBookingURL.searchParams.set("firstName", nameParts[0] || "");
+    newBookingURL.searchParams.set("lastName", nameParts.slice(1).join(" "));
+    newBookingURL.searchParams.set("email", state.overview.email || "");
+    newBookingURL.searchParams.set("phone", profile.phone || "");
+    newBookingURL.searchParams.set("street", profile.street || "");
+    newBookingURL.searchParams.set("houseNumber", profile.houseNumber || "");
+    newBookingURL.searchParams.set("postalCode", profile.postalCode || "");
+    newBookingURL.searchParams.set("city", profile.city || "");
+    if (profile.dietaryNotes) newBookingURL.searchParams.set("notes", profile.dietaryNotes);
+
+    const restaurantProfileBlock = restaurant.allowsProfileEditing ? `
+      <div class="receipt-meta"><strong>Deine Daten bei ${escapeHTML(restaurant.name || "diesem Restaurant")}</strong></div>
+      <form id="restaurant-profile-form" style="padding:0 24px 20px; display:grid; gap:12px;">
+        <label class="field">
+          <span>Name</span>
+          <input id="restaurant-profile-name" type="text" value="${escapeHTML(restaurant.guestName || "")}">
+        </label>
+        <label class="field">
+          <span>Telefon</span>
+          <input id="restaurant-profile-phone" type="tel" value="${escapeHTML(restaurant.guestPhone || "")}">
+        </label>
+        <p class="field-hint">Das ändert nur, was bei diesem einen Restaurant zu dir hinterlegt ist (z. B. bei „Zuletzt besucht“) — dein Hauptprofil oben und andere Restaurants bleiben davon unberührt.</p>
+        <p class="form-error" id="restaurant-profile-message" role="alert"></p>
+        <button class="secondary" type="submit">Speichern</button>
+      </form>` : `
+      <p class="field-hint" style="padding:0 24px 20px;">Dieses Restaurant erlaubt aktuell keine Profiländerungen — deine dort hinterlegten Daten bleiben wie zuletzt gespeichert. Dein Hauptprofil oben kannst du trotzdem jederzeit ändern.</p>`;
+
+    const el = $("guest-overview");
+    el.innerHTML = `
+      <header>
+        <div><p class="eyebrow">Gastportal</p><h1>${escapeHTML(restaurant.name || "Restaurant")}</h1></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <a class="link" href="#" id="back-to-restaurants">Zurück</a>
+          <div style="position:relative;">
+            <button type="button" id="restaurant-menu-toggle" class="icon-button" style="width:36px;height:36px;font-size:18px;" aria-label="Mehr Optionen">⋯</button>
+            <div id="restaurant-menu" hidden style="position:absolute; right:0; top:42px; z-index:10; background:#fff; border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 30px rgba(6,60,50,.16); min-width:180px; overflow:hidden;">
+              <button type="button" id="restaurant-menu-report" style="display:block; width:100%; text-align:left; padding:12px 16px; border:0; background:none; color:#c0374a; font-weight:700;">Restaurant melden</button>
+            </div>
+          </div>
+        </div>
+      </header>
+      <div class="receipt-meta" style="padding-top:0;">
+        ${restaurantBadgesHTML(restaurant)}
+        <span>${Number(restaurant.completedVisits || 0)} besuchte Reservierungen</span>
+      </div>
+      <div class="confirmation-actions" style="margin:16px 24px 22px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <a class="primary" href="${newBookingURL.toString()}">Neu reservieren</a>
+        ${repeatButton}
+        <button class="secondary" id="open-reviews" type="button">Bewertungen</button>
+        <button class="favorite-toggle ${restaurant.isFavorite ? "active" : ""}" type="button" data-favorite-toggle="${escapeHTML(restaurantID)}" aria-label="${restaurant.isFavorite ? "Favorit entfernen" : "Als Favorit merken"}">${restaurant.isFavorite ? "♥" : "♡"}</button>
+      </div>
+      <div class="section-divider"></div>
+      ${infoBlock}
+      ${menuBlock}
+      ${infoBlock || menuBlock ? '<div class="section-divider"></div>' : ""}
+      ${loyaltyBlock}
+      ${loyaltyBlock ? '<div class="section-divider"></div>' : ""}
+      ${receiptsBlock}
+      ${receiptsBlock ? '<div class="section-divider"></div>' : ""}
+      <div class="receipt-meta"><strong>Reservierungen &amp; Besuche</strong></div>
+      <ul class="receipt-items reservation-block">${reservationRows}</ul>
+      <div class="section-divider"></div>
+      ${restaurantProfileBlock}`;
+
+    $("back-to-restaurants").addEventListener("click", event => {
+      event.preventDefault();
+      renderStartTab();
+    });
+    $("open-reviews").addEventListener("click", () => openReviews(restaurant));
+
+    const menuToggle = $("restaurant-menu-toggle");
+    const menu = $("restaurant-menu");
+    if (menuToggle && menu) {
+      menuToggle.addEventListener("click", event => {
+        event.stopPropagation();
+        menu.hidden = !menu.hidden;
+      });
+      document.addEventListener("click", () => { menu.hidden = true; }, { once: true });
+      $("restaurant-menu-report")?.addEventListener("click", () => {
+        menu.hidden = true;
+        openReportRestaurantDialog(restaurant);
+      });
+    }
+
+    bindFavoriteButtons(el);
+    bindVoucherCopyButtons(el);
+    bindReservationRowActions(el, () => renderRestaurantDetail(restaurantID));
+
+    const restaurantProfileForm = $("restaurant-profile-form");
+    if (restaurantProfileForm) {
+      restaurantProfileForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const messageEl = $("restaurant-profile-message");
+        messageEl.classList.remove("visible", "success");
+        try {
+          await Api.rpc("update_my_guest_reservation_contact", {
+            p_restaurant_id: restaurantID,
+            p_name: $("restaurant-profile-name").value,
+            p_phone: $("restaurant-profile-phone").value
+          });
+          restaurant.guestName = $("restaurant-profile-name").value;
+          restaurant.guestPhone = $("restaurant-profile-phone").value;
+          messageEl.textContent = "Gespeichert.";
+          messageEl.classList.add("visible", "success");
+        } catch (error) {
+          messageEl.textContent = error.message || "Konnte nicht gespeichert werden.";
+          messageEl.classList.add("visible");
+        }
+      });
+    }
+  }
+
+  // ==========================================================================
+  // Reviews dialog
+  // ==========================================================================
+  const reviewDialog = $("review-dialog");
+  const reviewDialogTitle = $("review-dialog-title");
+  const reviewDialogContent = $("review-dialog-content");
+
+  function reviewStars(rating) {
+    const value = Math.max(0, Math.min(5, Number(rating || 0)));
+    return `${"★".repeat(value)}${"☆".repeat(5 - value)}`;
+  }
+
+  function reviewSummaryText(summary) {
+    const count = Number(summary?.count || 0);
+    if (!summary?.minimumReached || count < 5) {
+      return "Sobald mindestens fünf Bewertungen vorliegen, fasst Haviko wiederkehrendes Lob und häufige Kritikpunkte zusammen.";
+    }
+    const praise = [
+      [Number(summary.positiveService || 0), "der aufmerksame Service"],
+      [Number(summary.positiveFood || 0), "das Essen"],
+      [Number(summary.positiveAtmosphere || 0), "die Atmosphäre"]
+    ].sort((a, b) => b[0] - a[0])[0];
+    const concern = [
+      [Number(summary.waitingConcern || 0), "längere Wartezeiten"],
+      [Number(summary.serviceConcern || 0), "der Service"],
+      [Number(summary.foodConcern || 0), "einzelne Speisen"]
+    ].sort((a, b) => b[0] - a[0])[0];
+    const average = Number(summary.average || 0).toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const previous = Number(summary.previousAverage || 0);
+    const trend = previous > 0
+      ? Number(summary.average || 0) > previous + 0.1
+        ? " Die Bewertung entwickelt sich gegenüber dem vorherigen Zeitraum positiv."
+        : Number(summary.average || 0) < previous - 0.1
+          ? " Gegenüber dem vorherigen Zeitraum ist die Bewertung etwas zurückgegangen."
+          : " Die Bewertung bleibt gegenüber dem vorherigen Zeitraum stabil."
+      : "";
+    const concernText = concern[0] > 0
+      ? ` Als häufigster Kritikpunkt werden ${concern[1]} genannt.`
+      : " Es zeigt sich aktuell kein wiederkehrender Kritikpunkt.";
+    return `Aus ${count} Bewertungen ergibt sich ein Durchschnitt von ${average} Sternen. Besonders häufig gelobt wird ${praise[1]}.${concernText}${trend}`;
+  }
+
+  function animateReviewSummary(text, restaurantID) {
+    const target = $("review-insight-text");
+    if (!target) return;
+    clearInterval(state.reviews.typewriterTimer);
+    const animationKey = `haviko_review_summary_seen_${restaurantID}`;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || sessionStorage.getItem(animationKey)) {
+      target.textContent = text;
+      return;
+    }
+    const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+    let index = 0;
+    target.textContent = "";
+    const appendSentence = () => {
+      if (!target || index >= sentences.length) {
+        clearInterval(state.reviews.typewriterTimer);
+        sessionStorage.setItem(animationKey, "1");
+        return;
+      }
+      target.textContent += `${index ? " " : ""}${sentences[index].trim()}`;
+      index += 1;
+    };
+    appendSentence();
+    state.reviews.typewriterTimer = setInterval(appendSentence, 520);
+  }
+
+  function sortedFilteredReviews() {
+    const filtered = state.reviews.list.filter(review => {
+      const rating = Number(review.rating || 0);
+      if (state.reviews.filter === "positive") return rating >= 4;
+      if (state.reviews.filter === "critical") return rating <= 3;
+      return true;
+    });
+    return filtered.sort((left, right) => {
+      if (state.reviews.sort === "helpful") return Number(right.helpful_count || 0) - Number(left.helpful_count || 0);
+      if (state.reviews.sort === "best") return Number(right.rating || 0) - Number(left.rating || 0);
+      if (state.reviews.sort === "critical") return Number(left.rating || 0) - Number(right.rating || 0);
+      return new Date(right.created_at || 0) - new Date(left.created_at || 0);
+    });
+  }
+
+  function reviewDraftKey(restaurantID) {
+    return `haviko_review_draft_${restaurantID}`;
+  }
+
+  function readReviewDraft(restaurantID) {
+    try {
+      return JSON.parse(localStorage.getItem(reviewDraftKey(restaurantID)) || "null") || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function renderReviewCard(review) {
+    const reply = review.public_reply ? `
+      <div class="review-reply">
+        <strong>Antwort der Restaurantleitung</strong>
+        <span>${escapeHTML(review.public_reply)}</span>
+      </div>` : "";
+    const metadata = [
+      review.is_verified ? "Verifizierter Besuch" : "Gastbewertung",
+      review.is_edited ? "Bearbeitet" : "",
+      review.created_at ? dateTime.format(new Date(review.created_at)) : ""
+    ].filter(Boolean).join(" · ");
+    return `
+      <article class="review-card" data-review-id="${escapeHTML(review.id)}">
+        <div class="review-card-head">
+          <div><strong>${escapeHTML(review.guest_name || "Gast")}</strong><div class="review-meta">${escapeHTML(metadata)}</div></div>
+          <span class="review-stars" aria-label="${Number(review.rating || 0)} von 5 Sternen">${reviewStars(review.rating)}</span>
+        </div>
+        <p>${escapeHTML(review.comment || "Keine zusätzliche Nachricht.")}</p>
+        ${reply}
+        <div class="review-actions">
+          <button class="review-action ${review.is_helpful ? "active" : ""}" type="button" data-review-helpful="${escapeHTML(review.id)}">Hilfreich · ${Number(review.helpful_count || 0)}</button>
+        </div>
+        <details class="review-report">
+          <summary>Bewertung melden</summary>
+          <form class="review-report-grid" data-review-report="${escapeHTML(review.id)}">
+            <select name="reason" aria-label="Grund">
+              <option value="Beleidigung oder Hassrede">Beleidigung oder Hassrede</option>
+              <option value="Private Daten">Private Daten</option>
+              <option value="Spam oder sachfremder Inhalt">Spam oder sachfremder Inhalt</option>
+              <option value="Drohung oder gefährlicher Inhalt">Drohung oder gefährlicher Inhalt</option>
+            </select>
+            <textarea name="details" rows="3" maxlength="1000" placeholder="Optional genauer beschreiben"></textarea>
+            <button class="secondary" type="submit">Zur Prüfung senden</button>
+            <p class="form-error" role="status"></p>
+          </form>
+        </details>
+      </article>`;
+  }
+
+  function reviewComposerHTML() {
+    const restaurant = state.reviews.restaurant;
+    if (!restaurant?.allowsFeedback) return "";
+    const reservations = overviewReservations()
+      .filter(item => item.restaurantID === restaurant.restaurantID && item.status === "completed")
+      .sort((left, right) => new Date(right.startsAt || 0) - new Date(left.startsAt || 0));
+    if (!reservations.length) return "";
+    const draft = readReviewDraft(restaurant.restaurantID);
+    const rating = Number(draft.rating || 0);
+    return `
+      <form class="review-compose" id="review-compose-form" data-confirmation-code="${escapeHTML(reservations[0].confirmationCode || "")}">
+        <h3>Deinen Besuch bewerten</h3>
+        <p>Deine Bewertung wird als verifizierter Besuch veröffentlicht.</p>
+        <div class="compose-stars" aria-label="Bewertung auswählen">
+          ${[1, 2, 3, 4, 5].map(value => `<input id="review-rating-${value}" name="review-rating" type="radio" value="${value}" ${rating === value ? "checked" : ""}><label for="review-rating-${value}" aria-label="${value} Sterne">★</label>`).join("")}
+        </div>
+        <textarea id="review-comment" rows="4" maxlength="2000" placeholder="Was war besonders gut? Was kann besser werden?">${escapeHTML(draft.comment || "")}</textarea>
+        <p class="form-error" id="review-compose-message" role="status"></p>
+        <button class="primary" type="submit">Bewertung veröffentlichen</button>
+      </form>`;
+  }
+
+  function renderReviewDialog() {
+    const reviews = sortedFilteredReviews();
+    const summaryText = reviewSummaryText(state.reviews.summary || {});
+    reviewDialogContent.innerHTML = `
+      <section class="review-insight">
+        <span class="review-insight-icon" aria-hidden="true">✦</span>
+        <div><strong>Das sagen Gäste</strong><p id="review-insight-text"></p></div>
+      </section>
+      ${reviewComposerHTML()}
+      <div class="review-controls">
+        <button class="review-filter ${state.reviews.filter === "all" ? "active" : ""}" type="button" data-review-filter="all">Alle</button>
+        <button class="review-filter ${state.reviews.filter === "positive" ? "active" : ""}" type="button" data-review-filter="positive">Positiv</button>
+        <button class="review-filter ${state.reviews.filter === "critical" ? "active" : ""}" type="button" data-review-filter="critical">Kritisch</button>
+        <select id="review-sort" aria-label="Bewertungen sortieren">
+          <option value="recent" ${state.reviews.sort === "recent" ? "selected" : ""}>Neueste zuerst</option>
+          <option value="helpful" ${state.reviews.sort === "helpful" ? "selected" : ""}>Am hilfreichsten</option>
+          <option value="best" ${state.reviews.sort === "best" ? "selected" : ""}>Beste zuerst</option>
+          <option value="critical" ${state.reviews.sort === "critical" ? "selected" : ""}>Kritische zuerst</option>
+        </select>
+      </div>
+      <div class="review-list">${reviews.length ? reviews.map(renderReviewCard).join("") : '<div class="review-empty">Für diese Auswahl liegen noch keine Bewertungen vor.</div>'}</div>`;
+    animateReviewSummary(summaryText, state.reviews.restaurant?.restaurantID || "unknown");
+    bindReviewDialogActions();
+  }
+
+  function bindReviewDialogActions() {
+    reviewDialogContent.querySelectorAll("[data-review-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        state.reviews.filter = button.getAttribute("data-review-filter") || "all";
+        renderReviewDialog();
+      });
+    });
+    $("review-sort")?.addEventListener("change", event => {
+      state.reviews.sort = event.target.value;
+      renderReviewDialog();
+    });
+    reviewDialogContent.querySelectorAll("[data-review-helpful]").forEach(button => {
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          const reviewID = button.getAttribute("data-review-helpful");
+          const helpful = await Api.rpc("toggle_guest_review_helpful", { p_review_id: reviewID });
+          const review = state.reviews.list.find(item => item.id === reviewID);
+          if (review) {
+            review.is_helpful = Boolean(helpful);
+            review.helpful_count = Math.max(0, Number(review.helpful_count || 0) + (helpful ? 1 : -1));
+          }
+          renderReviewDialog();
+        } catch {
+          button.disabled = false;
+        }
+      });
+    });
+    reviewDialogContent.querySelectorAll("[data-review-report]").forEach(form => {
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const status = form.querySelector(".form-error");
+        const submit = form.querySelector("button[type=submit]");
+        submit.disabled = true;
+        try {
+          const reviewID = form.getAttribute("data-review-report");
+          const reportID = await Api.rpc("create_guest_review_report", {
+            p_review_id: reviewID,
+            p_reason: form.elements.reason.value,
+            p_details: form.elements.details.value
+          });
+          const session = Session.read();
+          const moderation = await fetch(`${SUPABASE_URL}/functions/v1/review-moderation`, {
+            method: "POST",
+            headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${session.accessToken}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ reportID })
+          });
+          if (!moderation.ok) throw new Error("Die Meldung wurde gespeichert und wird geprüft.");
+          const result = await moderation.json();
+          status.textContent = result.hidden ? "Die Bewertung wurde ausgeblendet." : "Geprüft. Die Bewertung bleibt sichtbar.";
+          status.classList.add("visible", "success");
+          if (result.hidden) state.reviews.list = state.reviews.list.filter(item => item.id !== reviewID);
+        } catch (error) {
+          status.textContent = error.message || "Die Meldung wurde gespeichert und wird geprüft.";
+          status.classList.add("visible", "success");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+    });
+    const composeForm = $("review-compose-form");
+    if (composeForm) {
+      const saveDraft = () => {
+        const rating = Number(composeForm.querySelector('[name="review-rating"]:checked')?.value || 0);
+        const comment = $("review-comment")?.value || "";
+        localStorage.setItem(reviewDraftKey(state.reviews.restaurant.restaurantID), JSON.stringify({ rating, comment }));
+      };
+      composeForm.addEventListener("input", saveDraft);
+      composeForm.addEventListener("change", saveDraft);
+      composeForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        const status = $("review-compose-message");
+        const rating = Number(composeForm.querySelector('[name="review-rating"]:checked')?.value || 0);
+        if (!rating) {
+          status.textContent = "Bitte wähle zuerst eine Sternebewertung aus.";
+          status.classList.add("visible");
+          return;
+        }
+        const submit = composeForm.querySelector("button[type=submit]");
+        submit.disabled = true;
+        try {
+          await Api.rpc("submit_guest_review", {
+            p_confirmation_code: composeForm.getAttribute("data-confirmation-code"),
+            p_rating: rating,
+            p_comment: $("review-comment").value,
+            p_contact_requested: false
+          });
+          localStorage.removeItem(reviewDraftKey(state.reviews.restaurant.restaurantID));
+          await openReviews(state.reviews.restaurant, true);
+        } catch (error) {
+          status.textContent = String(error.message || "Die Bewertung konnte nicht veröffentlicht werden.").includes("duplicate")
+            ? "Für diesen Besuch wurde bereits eine Bewertung abgegeben."
+            : error.message || "Die Bewertung konnte nicht veröffentlicht werden.";
+          status.classList.add("visible");
+          submit.disabled = false;
+        }
+      });
+    }
+  }
+
+  const RESTAURANT_REPORT_REASONS = [
+    "Falsche oder irreführende Angaben",
+    "Verdacht auf Betrug / Fake-Restaurant",
+    "Unangemessenes Verhalten",
+    "Sonstiges"
+  ];
+
+  function openReportRestaurantDialog(restaurant) {
+    const dialog = $("report-dialog");
+    const content = $("report-dialog-content");
+    content.innerHTML = `
+      <form id="report-restaurant-form" style="display:grid; gap:12px;">
+        <p style="margin:0; color:var(--muted); font-size:14px;">Melde <strong>${escapeHTML(restaurant.name || "dieses Restaurant")}</strong> bei Haviko. Wir prüfen jede Meldung manuell.</p>
+        <label class="field">
+          <span>Grund</span>
+          <select id="report-reason">
+            ${RESTAURANT_REPORT_REASONS.map(reason => `<option value="${escapeHTML(reason)}">${escapeHTML(reason)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="field">
+          <span>Details (optional)</span>
+          <textarea id="report-details" rows="4" placeholder="Beschreibe kurz, was passiert ist …"></textarea>
+        </label>
+        <p class="form-error" id="report-message" role="alert"></p>
+        <button class="primary full" type="submit">Meldung senden</button>
+      </form>`;
+    dialog.showModal();
+    $("close-report-dialog").onclick = () => dialog.close();
+    $("report-restaurant-form").addEventListener("submit", async event => {
+      event.preventDefault();
+      const submit = event.target.querySelector("button[type=submit]");
+      const messageEl = $("report-message");
+      messageEl.classList.remove("visible", "success");
+      submit.disabled = true;
+      try {
+        await Api.rpc("create_restaurant_report", {
+          p_restaurant_id: restaurant.restaurantID,
+          p_reason: $("report-reason").value,
+          p_details: $("report-details").value
+        });
+        messageEl.textContent = "Danke, deine Meldung wurde übermittelt.";
+        messageEl.classList.add("visible", "success");
+        submit.disabled = true;
+        setTimeout(() => dialog.close(), 1400);
+      } catch (error) {
+        messageEl.textContent = error.message || "Meldung konnte nicht gesendet werden.";
+        messageEl.classList.add("visible");
+        submit.disabled = false;
+      }
+    });
+  }
+
+  async function openReviews(restaurant, keepDialogOpen = false) {
+    state.reviews.restaurant = restaurant;
+    state.reviews.sort = "recent";
+    state.reviews.filter = "all";
+    reviewDialogTitle.textContent = `${restaurant.name || "Restaurant"} · Bewertungen`;
+    reviewDialogContent.innerHTML = '<div class="review-empty">Bewertungen werden geladen…</div>';
+    if (!keepDialogOpen && !reviewDialog.open) reviewDialog.showModal();
+    try {
+      const [reviews, summary] = await Promise.all([
+        Api.rpc("list_public_guest_reviews", { p_restaurant_id: restaurant.restaurantID }),
+        Api.rpc("get_public_review_summary", { p_restaurant_id: restaurant.restaurantID, p_days: 90 })
+      ]);
+      state.reviews.list = Array.isArray(reviews) ? reviews : [];
+      state.reviews.summary = summary || {};
+      renderReviewDialog();
+    } catch (error) {
+      reviewDialogContent.innerHTML = `<div class="review-empty">${escapeHTML(error.message || "Bewertungen konnten nicht geladen werden.")}</div>`;
+    }
+  }
+
+  $("close-review-dialog").addEventListener("click", () => reviewDialog.close());
+  reviewDialog.addEventListener("close", () => clearInterval(state.reviews.typewriterTimer));
+
+  // ==========================================================================
+  // Haviki chat: floating button + dialog, local history, word-by-word reveal.
+  // ==========================================================================
+  const chatDialog = $("chat-dialog");
+  const chatMessagesEl = $("chat-messages");
+
+  function loadChatHistory() {
+    try {
+      state.chat.history = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || "[]");
+    } catch {
+      state.chat.history = [];
+    }
+  }
+
+  function saveChatHistory() {
+    try { localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(state.chat.history.slice(-40))); } catch {}
+  }
+
+  function renderChatMessages() {
+    if (!state.chat.history.length) {
+      chatMessagesEl.innerHTML = '<div class="chat-empty">Hallo, ich bin Haviki! Frag mich zu deinen Reservierungen, Stempelkarten oder dem Gastportal.</div>';
+      return;
+    }
+    chatMessagesEl.innerHTML = state.chat.history.map(message =>
+      `<div class="chat-bubble ${message.role === "user" ? "user" : "assistant"}">${escapeHTML(message.content)}</div>`
+    ).join("");
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+
+  function appendTypingIndicator() {
+    const typing = document.createElement("div");
+    typing.className = "chat-typing";
+    typing.id = "chat-typing-indicator";
+    typing.innerHTML = "<span></span><span></span><span></span>";
+    chatMessagesEl.appendChild(typing);
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  }
+
+  function removeTypingIndicator() {
+    $("chat-typing-indicator")?.remove();
+  }
+
+  async function streamAssistantReply(text) {
+    const bubble = document.createElement("div");
+    bubble.className = "chat-bubble assistant";
+    chatMessagesEl.appendChild(bubble);
+    const words = text.split(/\s+/);
+    for (let index = 0; index < words.length; index += 1) {
+      bubble.textContent += `${index ? " " : ""}${words[index]}`;
+      chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+      await new Promise(resolve => setTimeout(resolve, 18));
+    }
+  }
+
+  $("chat-fab").addEventListener("click", () => {
+    loadChatHistory();
+    renderChatMessages();
+    if (!chatDialog.open) chatDialog.showModal();
+    $("chat-input").focus();
+  });
+  $("close-chat-dialog").addEventListener("click", () => chatDialog.close());
+  $("chat-clear").addEventListener("click", () => {
+    if (!confirm("Verlauf wirklich löschen?")) return;
+    state.chat.history = [];
+    saveChatHistory();
+    renderChatMessages();
+  });
+
+  $("chat-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (state.chat.sending) return;
+    const input = $("chat-input");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    state.chat.history.push({ role: "user", content: text });
+    saveChatHistory();
+    renderChatMessages();
+    appendTypingIndicator();
+    state.chat.sending = true;
+    try {
+      const response = await Api.invokeFunction("haviko-chat", {
+        messages: state.chat.history.map(message => ({ role: message.role, content: message.content })),
+        restaurantName: null,
+        audience: "guest"
+      });
+      removeTypingIndicator();
+      if (!response.ok) throw new Error("Haviki konnte nicht antworten.");
+      const result = await response.json();
+      const reply = result.reply || result.error || "Haviki konnte nicht antworten.";
+      await streamAssistantReply(reply);
+      state.chat.history.push({ role: "assistant", content: reply });
+      saveChatHistory();
+    } catch (error) {
+      removeTypingIndicator();
+      const message = "Haviki konnte nicht antworten. Bitte versuche es später erneut.";
+      await streamAssistantReply(message);
+      state.chat.history.push({ role: "assistant", content: message });
+      saveChatHistory();
+    } finally {
+      state.chat.sending = false;
+    }
+  });
+
+  // ==========================================================================
+  // "Still in development" notice - shown everywhere (landing + portal),
+  // dismissible, remembers the dismissal like the app's home-screen banner.
+  // ==========================================================================
+  const DEV_BANNER_DISMISSED_KEY = "haviko_dev_banner_dismissed_v1";
+  (function setupDevBanner() {
+    if (localStorage.getItem(DEV_BANNER_DISMISSED_KEY)) return;
+    Api.rpcPublic("get_system_status").then(status => {
+      if (!status?.development_banner_enabled) return;
+      const banner = $("dev-banner");
+      banner.querySelector("span").textContent = status.development_banner_message || "Haviko ist aktuell noch in der Entwicklung.";
+      banner.hidden = false;
+      $("dev-banner-dismiss").addEventListener("click", () => {
+        banner.hidden = true;
+        try { localStorage.setItem(DEV_BANNER_DISMISSED_KEY, "1"); } catch {}
+      });
+    }).catch(() => {});
+  })();
+
+  // ==========================================================================
+  // Legal re-consent - blocks the portal if Haviko updated the privacy
+  // policy or terms of use since the guest last accepted them. Mirrors the
+  // Restaurant app's staff-side consent gate.
+  // ==========================================================================
+  async function checkGuestLegalConsent() {
+    try {
+      const status = await Api.rpc("get_guest_legal_consent_status");
+      if (!status?.requires_acceptance) return;
+      const dialog = $("legal-consent-dialog");
+      $("legal-consent-error").hidden = true;
+      dialog.showModal();
+      $("legal-consent-accept").onclick = async () => {
+        $("legal-consent-accept").disabled = true;
+        try {
+          await Api.rpc("accept_current_guest_legal_documents", {
+            p_terms_version: status.terms_version,
+            p_privacy_version: status.privacy_version
+          });
+          dialog.close();
+        } catch (error) {
+          $("legal-consent-error").textContent = error.message || "Zustimmung konnte nicht gespeichert werden.";
+          $("legal-consent-error").hidden = false;
+          $("legal-consent-accept").disabled = false;
+        }
+      };
+    } catch {
+      // Non-fatal: if the status check fails, don't block the portal.
+    }
+  }
+
+  // ==========================================================================
+  // Bootstrapping - decide which view the URL/session points to.
+  // ==========================================================================
+  (function start() {
+    updateOfflineBanner();
+    const receiptToken = new URLSearchParams(location.search).get("receipt");
+    const accessTokenFromHash = new URLSearchParams(location.hash.slice(1)).get("access_token");
+    const hashRefreshToken = new URLSearchParams(location.hash.slice(1)).get("refresh_token");
+    const tablePublicID = new URLSearchParams(location.search).get("r");
+    const tableID = new URLSearchParams(location.search).get("table");
+
+    if (accessTokenFromHash) {
+      history.replaceState({}, "", location.pathname + location.search);
+      loadGuestOverview(accessTokenFromHash, hashRefreshToken);
+    } else if (tablePublicID && tableID) {
+      loadTableView(tablePublicID, tableID);
+    } else if (receiptToken) {
+      loadReceipt(receiptToken);
+    } else {
+      const session = Session.read();
+      if (session && session.accessToken) {
+        loadGuestOverview(session.accessToken, session.refreshToken);
+      }
+    }
+  })();
+  </script>
+</body>
+</html>
