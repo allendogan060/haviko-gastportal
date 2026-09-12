@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://unpkg.com/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
   <style>
     :root {
       --forest: #075f4e;
@@ -828,6 +829,30 @@
   // self-contained, unauthenticated views separate from the guest-account
   // tabs below.
   // ==========================================================================
+  function normalizedReceiptItems(receipt) {
+    const items = Array.isArray(receipt.items) ? receipt.items : [];
+    return items.map(item => {
+      const quantity = Number(item.quantity ?? item.count ?? 1);
+      const unitPrice = Number(item.unit_price ?? item.unitPrice ?? item.price ?? 0);
+      const taxRate = Number(item.tax_rate ?? item.taxRate ?? 0);
+      return {
+        name: item.name ?? item.productName ?? "Position",
+        quantity,
+        unitPrice,
+        taxRate,
+        total: unitPrice * quantity
+      };
+    });
+  }
+
+  function receiptTaxBreakdown(items) {
+    const byRate = new Map();
+    for (const item of items) {
+      byRate.set(item.taxRate, (byRate.get(item.taxRate) ?? 0) + item.total);
+    }
+    return [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([taxRate, subtotal]) => ({ taxRate, subtotal }));
+  }
+
   async function loadReceipt(token) {
     const el = $("receipt");
     $("landing").hidden = true;
@@ -836,22 +861,125 @@
     try {
       const receipt = await Api.rpcPublic("get_public_receipt", { p_token: token });
       if (!receipt || !receipt.invoiceNumber) throw new Error("Dieser persönliche Rechnungslink ist nicht mehr verfügbar.");
-      const items = Array.isArray(receipt.items) ? receipt.items : [];
+      const items = normalizedReceiptItems(receipt);
       const rows = items.map(item => {
-        const quantity = Number(item.quantity ?? item.count ?? 1);
-        const title = escapeHTML(item.name ?? item.productName ?? "Position");
-        const amount = Number(item.grossAmount ?? item.price ?? item.total ?? 0);
-        return `<li><span>${quantity}× ${title}</span><strong>${money.format(amount)}</strong></li>`;
+        return `<li><span>${item.quantity}× ${escapeHTML(item.name)}</span><strong>${money.format(item.total)}</strong></li>`;
       }).join("") || '<li><span>Keine Positionen hinterlegt</span></li>';
       const tip = /^https:\/\//i.test(receipt.tipLinkURL || "")
-        ? `<div class="receipt-actions"><a href="${escapeHTML(receipt.tipLinkURL)}" target="_blank" rel="noopener">Trinkgeld geben</a></div>` : "";
+        ? `<a href="${escapeHTML(receipt.tipLinkURL)}" target="_blank" rel="noopener">Trinkgeld geben</a>` : "";
       el.innerHTML = `
         <header><div><p class="eyebrow">Digitale Rechnung</p><h1>${escapeHTML(receipt.restaurantName || "Haviko Restaurant")}</h1></div><a class="link" href="${GASTPORTAL_URL}">Schließen</a></header>
         <div class="receipt-meta"><span>Rechnung ${escapeHTML(receipt.invoiceNumber)}</span><span>${escapeHTML(receipt.sourceName || "Direktverkauf")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</span><span>${escapeHTML(receipt.paymentMethodName || "Zahlung")}</span></div>
         <ul class="receipt-items">${rows}</ul>
-        <div class="receipt-total"><span>Gesamt</span><span>${money.format(Number(receipt.grossAmount || 0))}</span></div>${tip}`;
+        <div class="receipt-total"><span>Gesamt</span><span>${money.format(Number(receipt.grossAmount || 0))}</span></div>
+        <div class="receipt-actions"><button type="button" id="receipt-download">Kassenbeleg herunterladen</button>${tip}</div>`;
+      $("receipt-download").addEventListener("click", () => downloadReceiptPDF(receipt, items));
     } catch (error) {
       el.innerHTML = `<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Nicht verfügbar</h1></div><a class="link" href="${GASTPORTAL_URL}">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Link konnte nicht geöffnet werden.")}</div>`;
+    }
+  }
+
+  // Baut ein vollständiges PDF des Kassenbelegs client-seitig (jsPDF) - mit
+  // allen gesetzlich vorgeschriebenen Angaben, damit der Gast wirklich eine
+  // "echte" Rechnung herunterladen kann, nicht nur die Web-Ansicht.
+  async function downloadReceiptPDF(receipt, items) {
+    const button = $("receipt-download");
+    if (button) { button.disabled = true; button.textContent = "Wird erstellt…"; }
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: "mm", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 18;
+      let y = 20;
+
+      if (receipt.logoData) {
+        try {
+          const logoFormat = receipt.logoData.startsWith("/9j/") ? "JPEG" : "PNG";
+          doc.addImage(`data:image/${logoFormat.toLowerCase()};base64,${receipt.logoData}`, logoFormat, margin, y, 28, 28, undefined, "FAST");
+        } catch (_) { /* Logo unlesbar - Rechnung trotzdem ohne Logo erstellen */ }
+      }
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(receipt.restaurantName || "Haviko Restaurant", pageWidth - margin, y + 6, { align: "right" });
+      if (receipt.companyName) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(receipt.companyName, pageWidth - margin, y + 12, { align: "right" });
+      }
+      y += 34;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text(`Rechnung ${receipt.invoiceNumber}`, margin, y);
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : "", margin, y);
+      doc.text(receipt.paymentMethodName || "Zahlung", pageWidth - margin, y, { align: "right" });
+      y += 10;
+
+      doc.setDrawColor(217, 228, 224);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      doc.setFont("helvetica", "bold");
+      doc.text("Position", margin, y);
+      doc.text("MwSt.", pageWidth - margin - 45, y, { align: "right" });
+      doc.text("Betrag", pageWidth - margin, y, { align: "right" });
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      for (const item of items) {
+        doc.text(`${item.quantity}× ${item.name}`, margin, y, { maxWidth: pageWidth - margin * 2 - 55 });
+        doc.text(`${item.taxRate}%`, pageWidth - margin - 45, y, { align: "right" });
+        doc.text(money.format(item.total), pageWidth - margin, y, { align: "right" });
+        y += 6;
+      }
+      y += 4;
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      for (const entry of receiptTaxBreakdown(items)) {
+        doc.text(`MwSt. ${entry.taxRate}%`, margin, y);
+        doc.text(money.format(entry.subtotal), pageWidth - margin, y, { align: "right" });
+        y += 6;
+      }
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.text("Gesamt", margin, y);
+      doc.text(money.format(Number(receipt.grossAmount || 0)), pageWidth - margin, y, { align: "right" });
+      y += 12;
+
+      const tseFields = [
+        ["Kassen-Ser.-Nr.", receipt.cashRegisterSerialNumber],
+        ["TSE-Ser.-Nr.", receipt.tseSerialNumber],
+        ["Transaktion Nr.", receipt.tseTransactionNumber],
+        ["Signaturzähler", receipt.tseSignatureCounter],
+        ["Signatur", receipt.tseSignature]
+      ].filter(([, value]) => value !== null && value !== undefined && value !== "");
+      if (tseFields.length > 0) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("TSE", margin, y);
+        y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        for (const [label, value] of tseFields) {
+          doc.text(`${label}: ${String(value)}`, margin, y, { maxWidth: pageWidth - margin * 2 - 45 });
+          y += 5;
+        }
+      }
+
+      if (receipt.qrCodeData) {
+        try {
+          const qrDataURL = await QRCode.toDataURL(receipt.qrCodeData, { width: 300, margin: 1 });
+          doc.addImage(qrDataURL, "PNG", pageWidth - margin - 32, y - tseFields.length * 5 - 6, 32, 32);
+        } catch (_) { /* QR-Erzeugung fehlgeschlagen - Rechnung trotzdem ohne QR-Code erstellen */ }
+      }
+
+      doc.save(`Rechnung-${receipt.invoiceNumber}.pdf`);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = "Kassenbeleg herunterladen"; }
     }
   }
 
