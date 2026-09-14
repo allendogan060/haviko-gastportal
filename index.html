@@ -92,6 +92,16 @@
     .form-error.visible { display: block; }
     .form-error.success { border-color: #a9dcc7; background: #e6f6ee; color: #0a6b45; }
     @media (max-width: 860px) { .auth-shell { grid-template-columns: 1fr; } .auth-brand { min-height: 0; padding: 24px 20px 30px; } .auth-panel { width: 100%; margin: 0; padding: 24px 20px; } }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(10, 20, 16, .48); animation: modal-fade .15s ease-out; }
+    .modal-backdrop[hidden] { display: none; }
+    .modal-panel { width: 100%; max-width: 560px; max-height: min(80vh, 720px); overflow-y: auto; background: var(--surface); border-radius: 20px 20px 0 0; box-shadow: 0 -8px 40px rgba(0,0,0,.22); animation: modal-slide-up .2s ease-out; }
+    @media (min-width: 640px) {
+      .modal-backdrop { align-items: center; }
+      .modal-panel { border-radius: 20px; margin-bottom: 5vh; }
+    }
+    @keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes modal-slide-up { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .modal-panel header { position: sticky; top: 0; }
     .receipt { display: none; max-width: 900px; margin: 0 auto; overflow: hidden; }
     .receipt.visible { display: block; }
     .receipt header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 28px 24px; background: linear-gradient(135deg, var(--forest) 0%, var(--action) 100%); border-radius: 22px 22px 0 0; }
@@ -104,6 +114,7 @@
     .receipt-items { margin: 0; padding: 0 24px 20px; list-style: none; }
     .receipt-items li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-top: 1px solid var(--line); }
     .restaurant-row { cursor: pointer; flex-wrap: wrap; }
+    .restaurant-type-icon { flex: 0 0 auto; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; background: var(--soft); font-size: 18px; }
     .restaurant-row:hover { background: var(--soft, #f2f6f4); margin: 0 -12px; padding-left: 12px; padding-right: 12px; border-radius: 10px; }
     .restaurant-row .chevron { color: var(--muted); font-size: 22px; }
     .favorite-toggle { background: none; border: none; padding: 4px; font-size: 21px; line-height: 1; color: var(--muted); }
@@ -468,6 +479,10 @@
     <section id="guest-overview" class="receipt card" aria-live="polite"></section>
     <section id="guest-profile" class="receipt card" aria-live="polite"></section>
     <section id="guest-page" class="receipt card" aria-live="polite"></section>
+
+    <div id="modal-backdrop" class="modal-backdrop" hidden>
+      <div class="modal-panel" id="modal-panel" role="dialog" aria-modal="true"></div>
+    </div>
     <section id="guest-map" class="receipt card" aria-live="polite">
       <div class="map-header">
         <h2>Restaurants in deiner Nähe</h2>
@@ -1482,6 +1497,27 @@
     return el;
   }
 
+  // Lightweight bottom-sheet/pop-up used for things that don't need a full
+  // page navigation (e.g. Mitteilungen) - backdrop tap or the built-in close
+  // button dismiss it, nothing else on screen is disturbed.
+  function openModal(html) {
+    const backdrop = $("modal-backdrop");
+    const panel = $("modal-panel");
+    panel.innerHTML = html;
+    backdrop.hidden = false;
+    return panel;
+  }
+
+  function closeModal() {
+    const backdrop = $("modal-backdrop");
+    backdrop.hidden = true;
+    $("modal-panel").innerHTML = "";
+  }
+
+  $("modal-backdrop").addEventListener("click", event => {
+    if (event.target.id === "modal-backdrop") closeModal();
+  });
+
   function backToTab(tab) {
     setActiveTab(tab);
   }
@@ -1498,6 +1534,22 @@
     if (/imbiss|fast.?food|burger|d[oö]ner|kebab/.test(text)) return "Imbiss";
     if (/pizza/.test(text)) return "Pizzeria";
     return info?.restaurantType || "Restaurant";
+  }
+
+  // Mirrors havikoRestaurantTypePresentation(_:) in the native Gastportal
+  // app (GuestPortalView.swift) so the same restaurant shows the same kind
+  // of icon on web and in the app.
+  function restaurantTypeIcon(type) {
+    const lowered = String(type || "").toLowerCase();
+    if (lowered.includes("pizza")) return "🍕";
+    if (lowered.includes("café") || lowered.includes("cafe")) return "☕️";
+    if (lowered.includes("bar") || lowered.includes("pub") || lowered.includes("cocktail")) return "🍷";
+    if (lowered.includes("bäck") || lowered.includes("back") || lowered.includes("brot")) return "🥐";
+    if (
+      lowered.includes("burger") || lowered.includes("imbiss") || lowered.includes("fast")
+      || lowered.includes("kebab") || lowered.includes("doner") || lowered.includes("streetfood")
+    ) return "🥡";
+    return "🍴";
   }
 
   function priceClassLabel(restaurant) {
@@ -1756,7 +1808,7 @@
     const past = reservations.filter(item => item.status !== "cancelled" && item.startsAt && new Date(item.startsAt).getTime() <= now)
       .sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
 
-    const receiptRows = receipts.slice(0, 5).map(receipt => `
+    const receiptRows = receipts.slice(0, 3).map(receipt => `
       <li>
         <a class="receipt-link" href="${GASTPORTAL_URL}?receipt=${encodeURIComponent(receipt.token || "")}">
           <span><strong>${escapeHTML(receipt.invoiceNumber || "Rechnung")}</strong><br><small>${escapeHTML(restaurantNames.get(receipt.restaurantID) || "Haviko Restaurant")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</small></span>
@@ -1767,10 +1819,10 @@
       <div class="section-divider"></div>
       <h2 class="profile-section-title">Belege</h2>
       <ul class="receipt-items">${receiptRows}</ul>
-      ${receipts.length > 5 ? `<button class="text-button link" type="button" id="open-receipts-archive" style="margin:0 24px;">Alle anzeigen (${receipts.length})</button>` : ""}` : "";
+      ${receipts.length > 3 ? `<button class="text-button link" type="button" id="open-receipts-archive" style="margin:0 24px;">Alle anzeigen (${receipts.length})</button>` : ""}` : "";
 
     const smartNotifications = computeSmartNotifications();
-    const notificationRows = smartNotifications.slice(0, 5).map(notification => `
+    const notificationRows = smartNotifications.slice(0, 2).map(notification => `
       <li class="notification-row" data-notification-id="${escapeHTML(notification.id || "")}" data-notification-restaurant="${escapeHTML(notification.restaurantID || "")}" data-notification-server="${notification.server ? "1" : "0"}">
         ${notification.server ? (notification.readAt ? "" : '<span class="notification-dot" aria-label="Neu"></span>') : ""}
         <span><strong>${escapeHTML(notification.title || "Neue Mitteilung")}</strong><br><small>${escapeHTML(notification.message || "")}</small></span>
@@ -1780,7 +1832,7 @@
       <div class="section-divider"></div>
       <h2 class="profile-section-title">Mitteilungen</h2>
       <ul class="receipt-items notification-list">${notificationRows}</ul>
-      ${smartNotifications.length > 5 ? `<button class="text-button link" type="button" id="open-notifications-page" style="margin:0 24px;">Alle anzeigen (${smartNotifications.length})</button>` : ""}` : "";
+      ${smartNotifications.length > 2 ? `<button class="text-button link" type="button" id="open-notifications-page" style="margin:0 24px;">Alle anzeigen (${smartNotifications.length})</button>` : ""}` : "";
 
     const loyaltyCount = restaurants.filter(restaurant => !!restaurant.loyalty).length;
     const loyaltySummary = loyaltyCount > 0
@@ -1795,6 +1847,7 @@
 
     const rows = sortedRestaurants.map(restaurant => `
       <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
+        <span class="restaurant-type-icon" aria-hidden="true">${restaurantTypeIcon(restaurant.info?.restaurantType)}</span>
         <span style="flex:1; min-width:0;">
           <strong>${escapeHTML(restaurant.name || "Restaurant")}</strong>
           ${restaurantBadgesHTML(restaurant)}
@@ -1821,7 +1874,7 @@
     const el = $("guest-overview");
     el.innerHTML = `
       <header><div><p class="eyebrow">Gastportal</p><h1>${displayName ? `${timeOfDayGreeting()}, ${escapeHTML(displayName)}` : "Besuchte Restaurants"}</h1></div><a class="link" href="#" id="logout-link">Abmelden</a></header>
-      <div class="receipt-meta" style="padding-top:4px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+      <div class="receipt-meta" style="padding-top:18px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
       ${notificationBlock}
       ${receiptCollection}
       ${notificationBlock || receiptCollection ? '<div class="section-divider"></div>' : ""}
@@ -1866,7 +1919,7 @@
     const receiptsArchiveButton = $("open-receipts-archive");
     if (receiptsArchiveButton) receiptsArchiveButton.addEventListener("click", () => renderReceiptsArchivePage());
     const notificationsPageButton = $("open-notifications-page");
-    if (notificationsPageButton) notificationsPageButton.addEventListener("click", () => renderNotificationsPage());
+    if (notificationsPageButton) notificationsPageButton.addEventListener("click", () => renderNotificationsModal());
 
     el.querySelectorAll(".notification-row[data-notification-id]").forEach(row => {
       row.addEventListener("click", async () => {
@@ -1901,7 +1954,8 @@
       <ul class="receipt-items">
         ${favoriteRestaurants.map(restaurant => `
           <li class="restaurant-row" data-restaurant-id="${escapeHTML(restaurant.restaurantID || "")}">
-            <span><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong></span>
+            <span class="restaurant-type-icon" aria-hidden="true">${restaurantTypeIcon(restaurant.info?.restaurantType)}</span>
+            <span style="flex:1; min-width:0;"><strong>${escapeHTML(restaurant.name || "Restaurant")}</strong></span>
             <span class="chevron" aria-hidden="true">›</span>
           </li>`).join("")}
       </ul>
@@ -1915,7 +1969,7 @@
     const el = $("guest-profile");
     el.innerHTML = `
       <header><div><p class="eyebrow">Gastportal</p><h1>Profil</h1></div></header>
-      <div class="receipt-meta" style="padding-top:4px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
+      <div class="receipt-meta" style="padding-top:18px">Angemeldet mit ${escapeHTML(overview.email || "deiner E-Mail-Adresse")}</div>
       <div class="section-divider"></div>
       <div class="quick-links">
         <button class="quick-link" type="button" id="quick-receipts">Deine Rechnungen<span class="chevron">›</span></button>
@@ -1991,7 +2045,7 @@
     $("quick-receipts").addEventListener("click", () => renderReceiptsArchivePage());
     $("quick-loyalty").addEventListener("click", () => renderLoyaltyOverviewPage());
     $("quick-wallet").addEventListener("click", () => renderWalletPage());
-    $("quick-notifications").addEventListener("click", () => renderNotificationsPage());
+    $("quick-notifications").addEventListener("click", () => renderNotificationsModal());
     $("quick-legal").addEventListener("click", () => renderLegalPage());
     $("open-account-deletion").addEventListener("click", () => renderAccountDeletionPage());
 
@@ -2258,9 +2312,9 @@
     return new Intl.DateTimeFormat("de-DE", { dateStyle: "long" }).format(dateObj);
   }
 
-  async function renderNotificationsPage() {
-    const el = showGuestPage('<header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-back">Zurück</button></header><div class="receipt-meta">Wird geladen…</div>');
-    $("notif-back").addEventListener("click", () => setActiveTab("profile"));
+  async function renderNotificationsModal() {
+    const panel = openModal('<header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-close">Schließen</button></header><div class="receipt-meta">Wird geladen…</div>');
+    $("notif-close").addEventListener("click", closeModal);
     try {
       state.notifications = await Api.rpc("list_my_guest_notifications");
     } catch {}
@@ -2282,13 +2336,13 @@
             <span class="chevron" aria-hidden="true">›</span>
           </li>`).join("")}
       </ul>`).join("");
-    el.innerHTML = `
-      <header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-back">Zurück</button></header>
+    panel.innerHTML = `
+      <header><div><p class="eyebrow">Gastportal</p><h1>Mitteilungen</h1></div><button class="link" type="button" id="notif-close">Schließen</button></header>
       ${body || '<div class="receipt-meta">Keine Mitteilungen.</div>'}`;
-    $("notif-back").addEventListener("click", () => setActiveTab("profile"));
+    $("notif-close").addEventListener("click", closeModal);
     markNotificationsSeenNow();
     updateNotificationBadge();
-    el.querySelectorAll(".notification-row[data-notification-id]").forEach(row => {
+    panel.querySelectorAll(".notification-row[data-notification-id]").forEach(row => {
       row.addEventListener("click", async () => {
         const notificationID = row.getAttribute("data-notification-id");
         const restaurantID = row.getAttribute("data-notification-restaurant");
@@ -2302,12 +2356,12 @@
           } catch {}
         }
         const restaurant = restaurantByID(restaurantID);
-        if (restaurant) openReviews(restaurant);
+        if (restaurant) { closeModal(); openReviews(restaurant); }
       });
     });
   }
 
-  $("open-notifications").addEventListener("click", () => renderNotificationsPage());
+  $("open-notifications").addEventListener("click", () => renderNotificationsModal());
   $("open-wallet").addEventListener("click", () => renderWalletPage());
 
   // ==========================================================================
