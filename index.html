@@ -109,6 +109,7 @@
     .receipt header h1 { color: #fff; }
     .receipt header .link { color: #fff; opacity: .92; }
     .receipt h1 { margin: 0; font-size: 30px; }
+    .receipt-restaurant-contact { margin: 6px 0 0; color: rgba(255,255,255,.82); font-size: 13px; }
     .receipt-meta { padding: 20px 24px; color: var(--muted); display: grid; gap: 7px; font-size: 14px; }
     .receipt-meta strong { display: block; margin: 6px 0 2px; font-size: 15px; color: var(--ink); }
     .receipt-items { margin: 0; padding: 0 24px 20px; list-style: none; }
@@ -628,19 +629,19 @@
   const Session = {
     save(accessToken, refreshToken) {
       try {
-        localStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken, refreshToken }));
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({ accessToken, refreshToken }));
       } catch {}
     },
     read() {
       try {
-        return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+        return JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
       } catch {
         return null;
       }
     },
     clear() {
       try {
-        localStorage.removeItem(SESSION_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
       } catch {}
     }
   };
@@ -868,6 +869,24 @@
     return [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([taxRate, subtotal]) => ({ taxRate, subtotal }));
   }
 
+  function receiptFiscalDetailsHTML(receipt) {
+    const fields = [
+      ["Kassen-Ser.-Nr.", receipt.cashRegisterSerialNumber],
+      ["TSE-Ser.-Nr.", receipt.tseSerialNumber],
+      ["Transaktion Nr.", receipt.tseTransactionNumber],
+      ["Signaturzähler", receipt.tseSignatureCounter],
+      ["Signatur", receipt.tseSignature]
+    ].filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+    if (!fields.length && !receipt.qrCodeData) return "";
+    return `
+      <div class="section-divider"></div>
+      <div class="receipt-meta">
+        <strong>Fiskalisierung</strong>
+        ${fields.map(([label, value]) => `<span>${escapeHTML(label)}: ${escapeHTML(String(value))}</span>`).join("")}
+        ${receipt.qrCodeData ? `<canvas id="receipt-fiscal-qr" aria-label="Fiskalischer QR-Code"></canvas>` : ""}
+      </div>`;
+  }
+
   async function loadReceipt(token) {
     const el = $("receipt");
     $("landing").hidden = true;
@@ -882,12 +901,20 @@
       }).join("") || '<li><span>Keine Positionen hinterlegt</span></li>';
       const tip = /^https:\/\//i.test(receipt.tipLinkURL || "")
         ? `<a href="${escapeHTML(receipt.tipLinkURL)}" target="_blank" rel="noopener">Trinkgeld geben</a>` : "";
+      const restaurantContactLine = [receipt.restaurantAddress, receipt.restaurantPhone, receipt.restaurantEmail]
+        .filter(value => value && String(value).trim() !== "")
+        .map(escapeHTML)
+        .join(" · ");
       el.innerHTML = `
-        <header><div><p class="eyebrow">Digitale Rechnung</p><h1>${escapeHTML(receipt.restaurantName || "Haviko Restaurant")}</h1></div><a class="link" href="${GASTPORTAL_URL}">Schließen</a></header>
+        <header><div><p class="eyebrow">Digitale Rechnung</p><h1>${escapeHTML(receipt.restaurantName || "Haviko Restaurant")}</h1>${restaurantContactLine ? `<p class="receipt-restaurant-contact">${restaurantContactLine}</p>` : ""}</div><a class="link" href="${GASTPORTAL_URL}">Schließen</a></header>
         <div class="receipt-meta"><span>Rechnung ${escapeHTML(receipt.invoiceNumber)}</span><span>${escapeHTML(receipt.sourceName || "Direktverkauf")} · ${receipt.createdAt ? dateTime.format(new Date(receipt.createdAt)) : ""}</span><span>${escapeHTML(receipt.paymentMethodName || "Zahlung")}</span></div>
         <ul class="receipt-items">${rows}</ul>
         <div class="receipt-total"><span>Gesamt</span><span>${money.format(Number(receipt.grossAmount || 0))}</span></div>
+        ${receiptFiscalDetailsHTML(receipt)}
         <div class="receipt-actions"><button type="button" id="receipt-download">Kassenbeleg herunterladen</button>${tip}</div>`;
+      if (receipt.qrCodeData && $("receipt-fiscal-qr")) {
+        QRCode.toCanvas($("receipt-fiscal-qr"), receipt.qrCodeData, { width: 180, margin: 1, color: { dark: "#14211d", light: "#ffffff" } }, () => {});
+      }
       $("receipt-download").addEventListener("click", () => downloadReceiptPDF(receipt, items));
     } catch (error) {
       el.innerHTML = `<header><div><p class="eyebrow">Digitale Rechnung</p><h1>Nicht verfügbar</h1></div><a class="link" href="${GASTPORTAL_URL}">Zurück</a></header><div class="receipt-meta">${escapeHTML(error.message || "Der Link konnte nicht geöffnet werden.")}</div>`;
@@ -917,12 +944,23 @@
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
       doc.text(receipt.restaurantName || "Haviko Restaurant", pageWidth - margin, y + 6, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      let headerLineY = y + 12;
       if (receipt.companyName) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.text(receipt.companyName, pageWidth - margin, y + 12, { align: "right" });
+        doc.text(receipt.companyName, pageWidth - margin, headerLineY, { align: "right" });
+        headerLineY += 5;
       }
-      y += 34;
+      if (receipt.restaurantAddress) {
+        doc.text(receipt.restaurantAddress, pageWidth - margin, headerLineY, { align: "right" });
+        headerLineY += 5;
+      }
+      const restaurantReachability = [receipt.restaurantPhone, receipt.restaurantEmail].filter(Boolean).join("  ·  ");
+      if (restaurantReachability) {
+        doc.text(restaurantReachability, pageWidth - margin, headerLineY, { align: "right" });
+        headerLineY += 5;
+      }
+      y = Math.max(y + 34, headerLineY + 8);
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(13);
